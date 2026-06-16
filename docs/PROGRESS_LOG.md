@@ -11,7 +11,7 @@
 
 ## Next milestone
 
-Create a clean documented MVP factory baseline before changing application code, then implement the first user-owned Clients resource in a small phase.
+Phase 3: Inspection Findings — Add InspectionSection and Finding models with categories, severity, status, and CRUD operations with ownership chain verification.
 
 ## Completed
 
@@ -62,7 +62,45 @@ Create a clean documented MVP factory baseline before changing application code,
 
 ## In progress
 
-- Phase 2: Core domain data (Property + Inspection) — NEXT.
+- Phase 3: Inspection findings — NEXT.
+
+## Completed — Phase 2 fixes & improvements (2026-06-17)
+
+### Route param fix
+- Fixed all detail pages (ClientDetailPage, PropertyDetailPage, InspectionDetailPage) to use `useParams` from `react-router` instead of expecting props from Wasp. Wasp uses React Router under the hood and route params must be accessed via the `useParams()` hook.
+- Fixed InspectionsPage to use `useSearchParams` from `react-router` for `?propertyId=` query string.
+- Server logs confirm: `get-inspection-by-id` and `get-property-by-id` now return 200.
+
+### Date picker
+- Installed `react-day-picker` v10 and `date-fns` for calendar widget.
+- Created `app/src/client/components/ui/calendar.tsx` — shadcn-style Calendar wrapping react-day-picker v10.
+- Created `app/src/client/components/ui/date-picker.tsx` — popover DatePicker with Calendar + Clear button.
+- Created `app/src/client/hooks/use-on-click-outside.ts` — click-outside detection hook.
+- Replaced native `<input type="date">` with DatePicker in Inspection create/edit form.
+
+## Completed — Phase 2: Core domain data (Property + Inspection) (2026-06-16)
+
+### Schema
+- Added `PropertyType` enum (Residential, Commercial, Industrial, Government, Other).
+- Added `InspectionStatus` enum (Planned, InProgress, Completed, Cancelled).
+- Added `Property` model: id, address, city, postalCode, type, notes, userId (FK), clientId (FK, optional, onDelete: SetNull), timestamps, @@index([userId]), @@index([clientId]).
+- Added `Inspection` model: id, title, description, status (default Planned), scheduledDate, completedDate, userId (FK), propertyId (FK, onDelete: Restrict), clientId (FK, denormalized, onDelete: SetNull), timestamps, @@index([userId]), @@index([propertyId]).
+- Added reverse relations on User (properties, inspections) and Client (properties, inspections).
+- Migration `20260616220424_add_property_inspection` applied successfully.
+
+### Property CRUD
+- Created `app/src/properties/`: operations.ts (full CRUD with Zod, client ownership check, block delete if inspections exist), PropertiesPage.tsx (list with search, CRUD dialogs, type badges, Radix Select for client), PropertyDetailPage.tsx (property info + linked inspections), properties.wasp.ts (routes /properties and /properties/:id).
+
+### Inspection CRUD
+- Created `app/src/inspections/`: operations.ts (nested ownership: Inspection→Property→User, auto-denormalize clientId), InspectionsPage.tsx (list with status badges, Property selector, date inputs), InspectionDetailPage.tsx (read-only with Phase 3 placeholder), inspections.wasp.ts (routes /inspections and /inspections/:id).
+
+### Wire relationships
+- Created `app/src/clients/ClientDetailPage.tsx`: full detail with inline edit, linked Properties, route /clients/:id.
+- Added getClientById query with Property include. Added "View" button to client list items.
+
+### Integration
+- Imported propertiesSpec + inspectionsSpec into main.wasp.ts. Added nav links. Specs include all needed entities (Property, Client).
+- make check passed. Migration applied cleanly. wasp start compiles. No new packages.
 
 ## Completed — Foundation pass (2026-06-16)
 

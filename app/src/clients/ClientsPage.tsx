@@ -272,6 +272,16 @@ function ClientListItem({
         <Button
           type="button"
           variant="outline"
+          size="sm"
+          onClick={() => {
+            window.location.href = `/clients/${client.id}`;
+          }}
+        >
+          View
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
           size="icon"
           onClick={onEdit}
           aria-label={`Edit ${client.name}`}

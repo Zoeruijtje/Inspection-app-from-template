@@ -1,6 +1,6 @@
 # Next Prompt
 
-Use this prompt in Agent mode for Phase 2 — Core domain data (Property + Inspection).
+Use this prompt in Agent mode for Phase 3 — Inspection findings (InspectionSection + Finding).
 
 ---
 
@@ -20,79 +20,83 @@ If you discover this requires schema changes, migrations, package changes, provi
 - `docs/TODO.md`
 - `docs/PROGRESS_LOG.md`
 - `app/schema.prisma`
-- `app/src/clients/clients.wasp.ts`
 - `app/src/clients/operations.ts`
-- `app/src/projects/projects.wasp.ts` (if exists)
+- `app/src/properties/operations.ts`
+- `app/src/inspections/operations.ts`
+- `app/src/inspections/InspectionsPage.tsx`
+- `app/src/inspections/InspectionDetailPage.tsx`
 - `app/main.wasp.ts`
-- `tools/make-resource.mjs`
 
-## Task: Phase 2 — Core domain data (Property + Inspection)
+## Task: Phase 3 — Inspection findings (InspectionSection + Finding)
 
-Add Property and Inspection models to the database schema, build CRUD operations with ownership checks, wire up Client → Property → Inspection relationships, and add navigation.
+Add InspectionSection and Finding models with categories, severity, and status. Build Finding CRUD with ownership chain verification through Inspection → Property → User. Add fast-entry UI within the Inspection detail page.
 
-### Step 1: Add Property model
-
-In `app/schema.prisma`:
-
-- Add `Property` model with fields: id, address, city, postalCode, type (enum), notes, userId (FK to User), clientId (FK to Client), createdAt, updatedAt
-- Add `PropertyType` enum: Residential, Commercial, Industrial, Government, Other
-- Add `@@index([userId])` and `@@index([clientId])`
-
-### Step 2: Add Inspection model
+### Step 1: Schema changes
 
 In `app/schema.prisma`:
 
-- Add `Inspection` model with fields: id, title, description, status (enum), scheduledDate, completedDate, userId (FK to User), propertyId (FK to Property), clientId (FK to Client, denormalized for query convenience), createdAt, updatedAt
-- Add `InspectionStatus` enum: Planned, InProgress, Completed, Cancelled
-- Add `@@index([userId])` and `@@index([propertyId])`
+- Add `FindingCategory` enum: Structural, Electrical, Plumbing, FireSafety, HVAC, Exterior, Interior, Other
+- Add `Severity` enum: Low, Medium, High, Critical
+- Add `FindingStatus` enum: Open, InProgress, Resolved
+- Add `InspectionSection` model: id, title, sortOrder (Int), notes?, inspectionId (FK, onDelete: Cascade), timestamps, @@index([inspectionId])
+- Add `Finding` model: id, title, description, category, severity, status (default Open), location?, recommendation?, costEstimate? (Float), sortOrder (Int, default 0), sectionId (FK to InspectionSection, onDelete: Cascade), inspectionId (FK to Inspection, onDelete: Cascade, denormalized for query convenience), userId (FK to User), timestamps, @@index([sectionId]), @@index([inspectionId])
+- Add reverse relations on User (findings), Inspection (sections, findings), and InspectionSection (findings)
 
-### Step 3: Generate Property CRUD
+### Step 2: InspectionSection CRUD
 
-Use `tools/make-resource.mjs` to scaffold Property CRUD:
+Create `app/src/inspection/` sections sub-feature or inline in Inspection operations:
 
-- Property Wasp spec (queries + actions)
-- Property operations (create, read, update, delete with ownership checks)
-- Property page UI (list, create, edit)
-- Add Property route and nav link
+- Sections can be created inline during inspection creation or from the Inspection detail page
+- Sections have a title, sortOrder, and optional notes
+- Operations: createSection, updateSection, deleteSection, reorderSections
+- Ownership chain: Section → Inspection → Property → User
+- Add section CRUD UI within InspectionDetailPage
 
-### Step 4: Build Inspection CRUD manually
+### Step 3: Finding CRUD
 
-Create Inspection CRUD following the Clients/Property pattern:
+Create `app/src/findings/` directory:
 
-- Inspection Wasp spec
-- Inspection operations with ownership chain verification (user → property → inspection)
-- Inspection page UI
-- Add Inspection route and nav link
+- Finding operations with ownership chain: Finding → Section → Inspection → Property → User
+- Finding list with filter by category, severity, status
+- Fast-entry UI: add findings inline within the Inspection detail page (one form per finding, quick-add)
+- Category and severity color-coded badges
+- Finding form: title, description, category dropdown, severity dropdown, location, recommendation, costEstimate
+- Finding list shows: title, category badge, severity badge, status badge, location
 
-### Step 5: Wire relationships
+### Step 4: Update Inspection detail page
 
-- Client detail page shows linked Properties
-- Property detail page shows linked Inspections
-- Inspection form includes Property and Client selectors
+Replace the Phase 3 placeholder in `app/src/inspections/InspectionDetailPage.tsx`:
 
-### Step 6: Run migration and test
+- Show InspectionSections with their Findings nested
+- "Add section" button
+- "Add finding" button per section
+- Inline edit/delete for sections and findings
+- Expandable/collapsible sections
 
-- Run `wasp db migrate-dev --name add_property_inspection`
-- Browser CRUD test: create/list/edit/delete Property, create/list/edit/delete Inspection
-- Verify ownership: user A cannot see user B's Properties or Inspections
-- Verify cascade: deleting a Client warns about linked Properties
+### Step 5: Run migration and test
+
+- Run `wasp db migrate-dev --name add_finding_section`
+- Browser CRUD test: create section → add finding to section → edit finding → change severity/status → delete
+- Verify ownership: user A cannot see user B's findings
+- Verify cascade: deleting an InspectionSection cascades findings; deleting an Inspection cascades sections + findings
 
 ## Hard constraints:
 
 - Every query/action MUST check `context.user` and ownership.
-- Nested resources MUST verify the parent chain (Inspection → Property → User).
+- Nested resources MUST verify the entire parent chain (Finding → Section → Inspection → Property → User).
+- Finding.inspectionId is denormalized from the parent section's inspection at create time.
 - Do NOT add new npm packages without explicit approval.
 - Do NOT edit `.env.server` or `.env`.
 - Do NOT edit generated `.wasp/out` files.
-- Follow existing patterns from Clients/Projects.
+- Follow existing patterns from Clients/Properties/Inspections.
 
 ## After changes:
 
-1. Run `wasp db migrate-dev --name add_property_inspection`
+1. Run `wasp db migrate-dev --name add_finding_section`
 2. Run `make check`
 3. Start app with `wasp start`
-4. Browser test: CRUD Property, CRUD Inspection, ownership isolation
-5. Verify existing Clients/Projects still work
+4. Browser test: CRUD Sections, CRUD Findings, filter by category/severity/status, ownership isolation
+5. Verify existing Clients/Properties/Inspections still work
 
 ## Required deliverables:
 
@@ -101,4 +105,4 @@ Create Inspection CRUD following the Clients/Property pattern:
 - Proposed commit message
 - Update `docs/PROGRESS_LOG.md`
 - Update `docs/TODO.md`
-- Update `docs/NEXT_PROMPT.md` for Phase 3
+- Update `docs/NEXT_PROMPT.md` for Phase 4

@@ -3,6 +3,7 @@ import { HttpError } from "wasp/server";
 import type {
   CreateClient,
   DeleteClient,
+  GetClientById,
   GetClients,
   UpdateClient,
 } from "wasp/server/operations";
@@ -48,6 +49,10 @@ const deleteClientInputSchema = z.object({
 
 type DeleteClientInput = z.infer<typeof deleteClientInputSchema>;
 
+const getClientByIdInputSchema = z.object({
+  id: z.string().uuid(),
+});
+
 export const getClients: GetClients<void, Client[]> = async (
   _args,
   context,
@@ -64,6 +69,48 @@ export const getClients: GetClients<void, Client[]> = async (
       updatedAt: "desc",
     },
   });
+};
+
+export const getClientById: GetClientById<
+  z.infer<typeof getClientByIdInputSchema>,
+  Client | null
+> = async (rawArgs, context) => {
+  if (!context.user) {
+    throw new HttpError(401);
+  }
+
+  const { id } = ensureArgsSchemaOrThrowHttpError(
+    getClientByIdInputSchema,
+    rawArgs,
+  );
+
+  const client = await context.entities.Client.findFirst({
+    where: {
+      id,
+      userId: context.user.id,
+    },
+    include: {
+      properties: {
+        include: {
+          client: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          updatedAt: "desc",
+        },
+      },
+    },
+  });
+
+  if (!client) {
+    throw new HttpError(404, "Client not found.");
+  }
+
+  return client;
 };
 
 export const createClient: CreateClient<CreateClientInput, Client> = async (

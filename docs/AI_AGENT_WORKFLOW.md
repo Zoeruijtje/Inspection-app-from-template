@@ -114,7 +114,7 @@ Copy-paste this block at the end of every coding phase:
 2. `git diff --stat` → [summary]
 3. Changed files inspected → [yes/no]
 4. `make check` → [pass/fail + error if fail]
-5. Browser test → [pages tested, results]
+5. Browser test (with built in browser preferred or else chrome mcp) → [pages tested, results]
 6. Auth/ownership verified → [yes/no + details]
 7. Docs updated → [files updated]
 8. Commit message → `[type]: [description]`

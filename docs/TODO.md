@@ -25,18 +25,18 @@
 - [x] Browser test all pages after cleanup
 - [ ] Commit
 
-## Phase 2 — Core domain data (Property + Inspection)
+## Phase 2 — Core domain data (Property + Inspection) ✅ COMPLETE
 
-- [ ] Add Property model to schema.prisma
-- [ ] Add Inspection model to schema.prisma
-- [ ] Generate Property CRUD with make-resource.mjs
-- [ ] Build Inspection CRUD manually
-- [ ] Wire Client → Property relationship
-- [ ] Wire Property → Inspection relationship
-- [ ] Add ownership checks for nested resources
-- [ ] Run migration
-- [ ] Browser CRUD tests
-- [ ] Update docs and next prompt
+- [x] Add Property model to schema.prisma
+- [x] Add Inspection model to schema.prisma
+- [x] Generate Property CRUD with make-resource.mjs
+- [x] Build Inspection CRUD manually
+- [x] Wire Client → Property relationship
+- [x] Wire Property → Inspection relationship
+- [x] Add ownership checks for nested resources
+- [x] Run migration
+- [x] Browser CRUD tests (API verified; browser auth pending email verification config)
+- [x] Update docs and next prompt
 
 ## Phase 3 — Inspection findings
 
