@@ -41,12 +41,28 @@ Create a clean documented MVP factory baseline before changing application code,
 - Created and applied migration `20260616154215_add_clients`.
 - Replaced stock Open SaaS template README with Inspection App setup guide covering requirements, local setup, Makefile commands, removed directories, security rules, and docs index.
 
+## Completed — Phase 1: Product skeleton cleanup (2026-06-16)
+
+- Renamed app from "OpenSaaS" / "My Open SaaS App" to "InspectionApp" / "Inspection App" in `app/main.wasp.ts`.
+- Removed "Documentation" and "Blog" nav links (pointed to opensaas.sh).
+- Removed "AI Scheduler" from authenticated nav items (demo-app page still exists at /demo-app).
+- Removed "Star Our Repo on Github" announcement banner from landing page nav.
+- Updated landing page Hero with Dutch inspection-app headline: "Van klant tot rapport — één flow."
+- Replaced placeholder features grid with 9 inspection-relevant features (Klantbeheer, Projecten, Inspecties, Foto's, Rapportages, AI, Handtekeningen, Templates, Teamwerk).
+- Updated testimonials with Dutch inspector personas.
+- Updated FAQ with 3 inspection-relevant Dutch Q&A items.
+- Updated footer navigation (removed opensaas.sh/wasp.sh links).
+- Updated highlighted feature section with 5-step workflow summary.
+- Removed Open SaaS banner images from Hero.
+- Updated nav bar branding text from "Your SaaS" to "Inspection App".
+- Cleaned up unused `useIsLandingPage` import and `Announcement` reference in NavBar.
+- `make check` passed (whitespace check + Prisma validate).
+- No schema changes, no migrations, no new packages.
+- All functional pages preserved: auth, clients, projects, file-upload, admin, demo-app, payment.
+
 ## In progress
 
-- Step 13 onward: turn the repo into a controlled MVP factory.
-- Manual verification of Wasp plugin init state.
-- Provider simplification planning.
-- Manual browser verification and e2e coverage for the Clients resource.
+- Phase 2: Core domain data (Property + Inspection) — NEXT.
 
 ## Completed — Foundation pass (2026-06-16)
 

@@ -1,166 +1,147 @@
 import daBoiAvatar from "../client/static/da-boi.webp";
 import kivo from "../client/static/examples/kivo.webp";
-import messync from "../client/static/examples/messync.webp";
-import microinfluencerClub from "../client/static/examples/microinfluencers.webp";
-import promptpanda from "../client/static/examples/promptpanda.webp";
-import reviewradar from "../client/static/examples/reviewradar.webp";
-import scribeist from "../client/static/examples/scribeist.webp";
-import searchcraft from "../client/static/examples/searchcraft.webp";
-import { BlogUrl, DocsUrl } from "../shared/common";
 import type { GridFeature } from "./components/FeaturesGrid";
 
 export const features: GridFeature[] = [
   {
-    name: "Cool Feature 1",
-    description: "Your feature",
-    emoji: "🤝",
-    href: DocsUrl,
+    name: "Klantbeheer",
+    description: "Beheer al uw klanten en hun contactgegevens op één plek.",
+    emoji: "👥",
+    href: "#",
     size: "small",
   },
   {
-    name: "Cool Feature 2",
-    description: "Feature description",
-    emoji: "🔐",
-    href: DocsUrl,
+    name: "Projecten & Objecten",
+    description: "Koppel inspecties aan projecten, objecten en adressen.",
+    emoji: "🏢",
+    href: "#",
     size: "small",
   },
   {
-    name: "Cool Feature 3",
-    description: "Describe your cool feature here",
-    emoji: "🥞",
-    href: DocsUrl,
+    name: "Inspecties Uitvoeren",
+    description: "Gestructureerde inspecties met bevindingen per categorie en ernst.",
+    emoji: "🔍",
+    href: "#",
     size: "medium",
   },
   {
-    name: "Cool Feature 4",
-    description: "Describe your cool feature here",
-    emoji: "💸",
-    href: DocsUrl,
+    name: "Foto's & Bijlagen",
+    description: "Voeg foto's toe aan bevindingen — veilig opgeslagen en snel toegankelijk.",
+    emoji: "📸",
+    href: "#",
     size: "large",
   },
   {
-    name: "Cool Feature 5",
-    description: "Describe your cool feature here",
-    emoji: "💼",
-    href: DocsUrl,
+    name: "Rapportages",
+    description: "Genereer professionele inspectierapporten met één klik.",
+    emoji: "📋",
+    href: "#",
     size: "large",
   },
   {
-    name: "Cool Feature 6",
-    description: "It is cool",
-    emoji: "📈",
-    href: DocsUrl,
-    size: "small",
-  },
-  {
-    name: "Cool Feature 7",
-    description: "Cool feature",
-    emoji: "📧",
-    href: DocsUrl,
-    size: "small",
-  },
-  {
-    name: "Cool Feature 8",
-    description: "Describe your cool feature here",
+    name: "AI-Assistentie",
+    description: "Laat AI helpen bij het schrijven van aanbevelingen en conclusies.",
     emoji: "🤖",
-    href: DocsUrl,
+    href: "#",
+    size: "small",
+  },
+  {
+    name: "Digitale Handtekeningen",
+    description: "Laat klanten en inspecteurs digitaal ondertekenen.",
+    emoji: "✍️",
+    href: "#",
+    size: "small",
+  },
+  {
+    name: "Templates",
+    description: "Herbruikbare inspectiesjablonen per sector en type.",
+    emoji: "📝",
+    href: "#",
     size: "medium",
   },
   {
-    name: "Cool Feature 9",
-    description: "Describe your cool feature here",
-    emoji: "🚀",
-    href: DocsUrl,
+    name: "Teamwerk",
+    description: "Werk samen met meerdere inspecteurs in één account.",
+    emoji: "🤝",
+    href: "#",
     size: "medium",
   },
 ];
 
 export const testimonials = [
   {
-    name: "Da Boi",
-    role: "Wasp Mascot",
-    avatarSrc: daBoiAvatar,
-    socialUrl: "https://twitter.com/wasplang",
-    quote: "I don't even know how to code. I'm just a plushie.",
-  },
-  {
-    name: "Mr. Foobar",
-    role: "Founder @ Cool Startup",
-    avatarSrc: daBoiAvatar,
-    socialUrl: "",
-    quote: "This product makes me cooler than I already am.",
-  },
-  {
-    name: "Jamie",
-    role: "Happy Customer",
+    name: "Jan de Vries",
+    role: "Zelfstandig Bouwkundig Inspecteur",
     avatarSrc: daBoiAvatar,
     socialUrl: "#",
-    quote: "My cats love it!",
+    quote: "Eindelijk een tool die begrijpt hoe een bouwkundige inspectie werkt. Van klant tot rapport — alles in één flow.",
+  },
+  {
+    name: "Petra Bakker",
+    role: "Eigenaar @ BouwInspect BV",
+    avatarSrc: daBoiAvatar,
+    socialUrl: "#",
+    quote: "Mijn team van 5 inspecteurs werkt nu eindelijk in één systeem. Geen losse Excel-sheets meer.",
+  },
+  {
+    name: "Mohammed El Amrani",
+    role: "Inspecteur & Adviseur",
+    avatarSrc: daBoiAvatar,
+    socialUrl: "#",
+    quote: "De AI-suggesties besparen mij uren per week aan rapporten schrijven.",
   },
 ];
 
 export const faqs = [
   {
     id: 1,
-    question: "Whats the meaning of life?",
-    answer: "42.",
-    href: "https://en.wikipedia.org/wiki/42_(number)",
+    question: "Voor wie is Inspection App bedoeld?",
+    answer: "Voor zelfstandige bouwkundig inspecteurs en kleine inspectiebedrijven (1-10 medewerkers) die hun inspecties, klanten en rapporten willen digitaliseren.",
+    href: "#",
+  },
+  {
+    id: 2,
+    question: "Kan ik rapporten exporteren?",
+    answer: "Ja, u kunt inspectierapporten genereren en exporteren als PDF, compleet met bevindingen, foto's en aanbevelingen.",
+    href: "#",
+  },
+  {
+    id: 3,
+    question: "Werkt het ook op mobiel?",
+    answer: "Inspection App is volledig responsive en werkt op uw smartphone of tablet via de browser — geen aparte app nodig.",
+    href: "#",
   },
 ];
 
 export const footerNavigation = {
   app: [
-    { name: "Documentation", href: DocsUrl },
-    { name: "Blog", href: BlogUrl },
+    { name: "Features", href: "/#features" },
+    { name: "Prijzen", href: "#" },
   ],
   company: [
-    { name: "About", href: "https://wasp.sh" },
+    { name: "Over Ons", href: "#" },
     { name: "Privacy", href: "#" },
-    { name: "Terms of Service", href: "#" },
+    { name: "Voorwaarden", href: "#" },
   ],
 };
 
 export const examples = [
   {
-    name: "Example #1",
-    description: "Describe your example here.",
+    name: "Bouwkundige Keuring",
+    description: "Volledige bouwkundige inspectie met bevindingen per element.",
     imageSrc: kivo,
     href: "#",
   },
   {
-    name: "Example #2",
-    description: "Describe your example here.",
-    imageSrc: messync,
+    name: "Opleveringsrapport",
+    description: "Opleveringsinspectie met foto's en herstelpunten.",
+    imageSrc: kivo,
     href: "#",
   },
   {
-    name: "Example #3",
-    description: "Describe your example here.",
-    imageSrc: microinfluencerClub,
-    href: "#",
-  },
-  {
-    name: "Example #4",
-    description: "Describe your example here.",
-    imageSrc: promptpanda,
-    href: "#",
-  },
-  {
-    name: "Example #5",
-    description: "Describe your example here.",
-    imageSrc: reviewradar,
-    href: "#",
-  },
-  {
-    name: "Example #6",
-    description: "Describe your example here.",
-    imageSrc: scribeist,
-    href: "#",
-  },
-  {
-    name: "Example #7",
-    description: "Describe your example here.",
-    imageSrc: searchcraft,
+    name: "Energielabel Opname",
+    description: "Inspectie ter voorbereiding van een energielabel.",
+    imageSrc: kivo,
     href: "#",
   },
 ];

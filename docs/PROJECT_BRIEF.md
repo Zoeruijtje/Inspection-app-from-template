@@ -17,24 +17,26 @@
 
 ## 2. Target users
 
-| User type | Description |
-|-----------|-------------|
+| User type                              | Description                                                                                                            |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Primary: Freelance building inspectors | Self-employed inspectors who need to capture clients, properties, inspections, findings, photos, and generate reports. |
-| Primary: Small inspection firms | 1-10 employees, multiple inspectors, shared client base. |
-| Secondary: Construction professionals | Project managers, contractors who do inspections as part of their work. |
-| Secondary: Property managers | Building owners/managers tracking inspections over time. |
-| Future: Large inspection companies | Multi-inspector teams, organizational hierarchies, advanced permissions. |
+| Primary: Small inspection firms        | 1-10 employees, multiple inspectors, shared client base.                                                               |
+| Secondary: Construction professionals  | Project managers, contractors who do inspections as part of their work.                                                |
+| Secondary: Property managers           | Building owners/managers tracking inspections over time.                                                               |
+| Future: Large inspection companies     | Multi-inspector teams, organizational hierarchies, advanced permissions.                                               |
 
 ---
 
 ## 3. Primary workflows
 
 ### Core flow (MVP v1):
+
 ```
 Create Client → Create Property → Create Inspection → Add Findings (with photos) → Generate Report
 ```
 
 ### Detailed steps:
+
 1. **Client management:** Add/edit client contact info, company details, notes.
 2. **Property management:** Add property address, type, characteristics linked to a client.
 3. **Inspection creation:** Create inspection for a property, select template/checklist, schedule date.
@@ -42,6 +44,7 @@ Create Client → Create Property → Create Inspection → Add Findings (with p
 5. **Report generation:** Select findings, organize into report sections, preview, export as PDF.
 
 ### Secondary flows (v2+):
+
 - Reusable inspection templates per sector
 - AI-assisted finding descriptions and recommendations
 - Digital signature capture
@@ -53,6 +56,7 @@ Create Client → Create Property → Create Inspection → Add Findings (with p
 ## 4. MVP scope (Phase 1-5)
 
 ### In scope for MVP:
+
 - ✅ User authentication (email/password) — already working
 - ✅ Client CRUD — already implemented
 - ✅ Project → repurpose or complement as Property
@@ -64,6 +68,7 @@ Create Client → Create Property → Create Inspection → Add Findings (with p
 - ✅ Basic PDF export (new)
 
 ### Out of scope for MVP:
+
 - ❌ Native mobile apps (iOS/Android)
 - ❌ Offline mode
 - ❌ Client portal
@@ -89,6 +94,7 @@ Create Client → Create Property → Create Inspection → Add Findings (with p
 ## 6. Long-term vision
 
 After MVP, expand toward:
+
 1. **Sector templates:** Pre-built Dutch building inspection templates (electrical, mechanical, fire safety, structural, energy performance).
 2. **AI-powered assistance:** DeepSeek-powered text correction, recommendation generation, report introduction/conclusion writing.
 3. **Digital signatures:** Legally valid signature capture in-browser.
@@ -139,12 +145,12 @@ After MVP, expand toward:
 
 ## 10. What makes this app different
 
-| Aspect | Generic checklist tools | Our inspection app |
-|--------|------------------------|-------------------|
-| Purpose | Any checklist | Building/property inspections specifically |
-| Data model | Flat list of items | Client → Property → Inspection → Finding → Report hierarchy |
-| Photos | General gallery | Photos linked to specific findings with annotations |
-| Reports | Basic export | Structured, branded, professional PDF reports |
-| AI | Not present or generic | Purpose-built for inspection text (findings, recommendations, report narrative) |
-| Ownership | Often team-first | Inspector-owned data, clear permission boundaries |
-| Stack | Black-box SaaS | Open SaaS / Wasp — transparent, maintainable, extensible |
+| Aspect     | Generic checklist tools | Our inspection app                                                              |
+| ---------- | ----------------------- | ------------------------------------------------------------------------------- |
+| Purpose    | Any checklist           | Building/property inspections specifically                                      |
+| Data model | Flat list of items      | Client → Property → Inspection → Finding → Report hierarchy                     |
+| Photos     | General gallery         | Photos linked to specific findings with annotations                             |
+| Reports    | Basic export            | Structured, branded, professional PDF reports                                   |
+| AI         | Not present or generic  | Purpose-built for inspection text (findings, recommendations, report narrative) |
+| Ownership  | Often team-first        | Inspector-owned data, clear permission boundaries                               |
+| Stack      | Black-box SaaS          | Open SaaS / Wasp — transparent, maintainable, extensible                        |

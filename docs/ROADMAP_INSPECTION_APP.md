@@ -10,6 +10,7 @@
 **Goal:** Verify local setup, confirm app runs, smoke-test core functionality, create planning docs.
 
 **Deliverables:**
+
 - [x] Local setup verified (WSL/Linux path, Node, Wasp, Docker, DB)
 - [x] Dependencies installed (`wasp install`, `npm install`)
 - [x] `.env.server` created from example
@@ -26,7 +27,7 @@
 - [x] Product research completed
 - [x] Planning docs created
 
-**Files changed:** `README.md`, `.env.server` (new), docs/*.md (new/updated)
+**Files changed:** `README.md`, `.env.server` (new), docs/\*.md (new/updated)
 
 **Self-check:** ✅ `make check` passes, `wasp start` runs, smoke tests pass.
 
@@ -39,6 +40,7 @@
 **Goal:** Rename app branding from Open SaaS/demo to Inspection App. Keep auth, admin, Clients. Decide Project fate.
 
 **Deliverables:**
+
 - [ ] Change app name from "OpenSaaS" / "My Open SaaS App" to inspection app name
 - [ ] Update page titles, header branding
 - [ ] Remove/hide irrelevant demo navigation links (Blog, Documentation pointing to opensaas.sh)
@@ -48,6 +50,7 @@
 - [ ] No schema changes
 
 **Files likely to change:**
+
 - `app/main.wasp.ts` (app name, title)
 - `app/src/client/components/NavBar/constants.ts`
 - `app/src/landing-page/LandingPage.tsx`
@@ -67,6 +70,7 @@
 **Goal:** Add Property and Inspection resources with proper ownership chains.
 
 **Deliverables:**
+
 - [ ] Add `Property` model to `schema.prisma` (address, city, postalCode, propertyType, constructionYear, notes, clientId?, userId)
 - [ ] Add `Inspection` model (inspectionDate, status enum, notes, propertyId, userId)
 - [ ] Generate Property CRUD with `tools/make-resource.mjs`
@@ -79,6 +83,7 @@
 - [ ] Browser CRUD tests for both
 
 **Files likely to change:**
+
 - `app/schema.prisma` (new models)
 - `app/src/property/` (new directory)
 - `app/src/inspection/` (new directory)
@@ -86,6 +91,7 @@
 - Nav constants (add nav links)
 
 **Commands:**
+
 ```bash
 node tools/make-resource.mjs properties
 wasp db migrate-dev --name add_property_inspection
@@ -102,6 +108,7 @@ wasp db migrate-dev --name add_property_inspection
 **Goal:** Add Finding resource with categories, severity, status, location, and recommendations.
 
 **Deliverables:**
+
 - [ ] Add `Finding` model (title, description, category, severity, status, location, recommendation, costEstimate?, sectionId, inspectionId)
 - [ ] Add `InspectionSection` model (title, sortOrder, notes, inspectionId)
 - [ ] Category enum (structural, electrical, plumbing, fire_safety, hvac, exterior, interior, other)
@@ -114,6 +121,7 @@ wasp db migrate-dev --name add_property_inspection
 - [ ] Browser tests
 
 **Files likely to change:**
+
 - `app/schema.prisma` (Finding, InspectionSection models, enums)
 - `app/src/inspection/` (updated with sections + findings UI)
 - `app/src/finding/` (new directory)
@@ -129,6 +137,7 @@ wasp db migrate-dev --name add_property_inspection
 **Goal:** Attach photos to findings using existing S3 file upload pattern with ownership-checked downloads.
 
 **Deliverables:**
+
 - [ ] Add `FindingPhoto` model (s3Key, fileName, contentType, caption, sortOrder, findingId, fileId?)
 - [ ] Photo upload UI within finding detail/edit
 - [ ] Thumbnail preview in finding list
@@ -139,6 +148,7 @@ wasp db migrate-dev --name add_property_inspection
 - [ ] Browser tests
 
 **Files likely to change:**
+
 - `app/schema.prisma` (FindingPhoto model)
 - `app/src/file-upload/` (may reuse/extend)
 - `app/src/finding/` (updated with photo UI)
@@ -154,6 +164,7 @@ wasp db migrate-dev --name add_property_inspection
 **Goal:** Build report structure with sections, finding selection, and browser preview.
 
 **Deliverables:**
+
 - [ ] Add `ReportTemplate` model (name, logoUrl, primaryColor, companyName, headerFooterConfig JSON)
 - [ ] Report builder UI: select inspection → select sections → select findings → preview
 - [ ] Report preview page with structured layout
@@ -162,6 +173,7 @@ wasp db migrate-dev --name add_property_inspection
 - [ ] Run migration
 
 **Files likely to change:**
+
 - `app/schema.prisma` (ReportTemplate model)
 - `app/src/report/` (new directory)
 
@@ -176,6 +188,7 @@ wasp db migrate-dev --name add_property_inspection
 **Goal:** Generate professional PDF reports from the preview structure.
 
 **Deliverables:**
+
 - [ ] Research and select Wasp-compatible PDF library (Puppeteer, jsPDF, or PDFKit)
 - [ ] Add `ReportExport` model (exportType, status, s3Key, generatedAt, inspectionId, userId)
 - [ ] Server-side PDF generation action
@@ -186,6 +199,7 @@ wasp db migrate-dev --name add_property_inspection
 - [ ] Browser/download test
 
 **Files likely to change:**
+
 - `app/schema.prisma` (ReportExport model)
 - `app/src/report/` (PDF generation logic)
 - `app/package.json` (new PDF dependency)
@@ -201,6 +215,7 @@ wasp db migrate-dev --name add_property_inspection
 **Goal:** Reusable inspection templates with section templates and finding presets.
 
 **Deliverables:**
+
 - [ ] Add `InspectionTemplate` model (name, description, sector, userId)
 - [ ] Add `TemplateSection` model (title, sortOrder, templateId)
 - [ ] Add `TemplateFindingPreset` model (title template, category, defaultSeverity, sectionId)
@@ -211,6 +226,7 @@ wasp db migrate-dev --name add_property_inspection
 - [ ] Browser tests
 
 **Files likely to change:**
+
 - `app/schema.prisma` (Template models)
 - `app/src/template/` (new directory)
 - `app/src/inspection/` (updated with template selection)
@@ -226,6 +242,7 @@ wasp db migrate-dev --name add_property_inspection
 **Goal:** DeepSeek-powered AI for finding descriptions, recommendations, and report narrative.
 
 **Deliverables:**
+
 - [ ] DeepSeek API wrapper (reuse/extend existing AI pattern)
 - [ ] "AI Improve" button on finding description field
 - [ ] "AI Recommend" button for generating recommendations from rough notes
@@ -239,6 +256,7 @@ wasp db migrate-dev --name add_property_inspection
 - [ ] Browser tests
 
 **Files likely to change:**
+
 - `app/schema.prisma` (AiUsageLog model)
 - `app/src/ai/` (new directory, DeepSeek wrapper)
 - `app/src/finding/` (AI buttons)
@@ -255,6 +273,7 @@ wasp db migrate-dev --name add_property_inspection
 **Goal:** Digital signature capture and defect follow-up task management.
 
 **Deliverables:**
+
 - [ ] Add `Signature` model (signerName, signerRole, signatureData, signedAt, inspectionId)
 - [ ] Add `FollowUpTask` model (title, description, assignedTo, dueDate, status, findingId)
 - [ ] Signature pad/canvas component for browser
@@ -265,6 +284,7 @@ wasp db migrate-dev --name add_property_inspection
 - [ ] Browser tests
 
 **Files likely to change:**
+
 - `app/schema.prisma` (Signature, FollowUpTask models)
 - `app/src/signature/` (new directory)
 - `app/src/task/` (new directory)
@@ -281,6 +301,7 @@ wasp db migrate-dev --name add_property_inspection
 **Goal:** Env validation cleanup, real email, provider guards, Railway dry-run, security review.
 
 **Deliverables:**
+
 - [ ] Fix `app/src/env.ts` — make unused provider schemas optional
 - [ ] Update `.env.server.example` with clear required/optional labels
 - [ ] Switch email from Dummy to Mailgun or SMTP
@@ -292,6 +313,7 @@ wasp db migrate-dev --name add_property_inspection
 - [ ] Update all docs
 
 **Files likely to change:**
+
 - `app/src/env.ts`
 - `app/src/server/emailSender.wasp.ts`
 - Various provider files
@@ -305,16 +327,16 @@ wasp db migrate-dev --name add_property_inspection
 
 ## Phase summary
 
-| Phase | Name | Entities Added | Effort | Status |
-|-------|------|----------------|--------|--------|
-| 0 | Foundation | — | Done | ✅ Complete |
-| 1 | Skeleton cleanup | — | Small | 🔜 Next |
-| 2 | Property + Inspection | Property, Inspection | Medium | ⏳ Planned |
-| 3 | Findings | InspectionSection, Finding | Medium | ⏳ Planned |
-| 4 | Photos | FindingPhoto | Small | ⏳ Planned |
-| 5 | Report preview | ReportTemplate | Medium | ⏳ Planned |
-| 6 | PDF export | ReportExport | Medium | ⏳ Planned |
-| 7 | Templates | InspectionTemplate, TemplateSection | Medium | ⏳ Planned |
-| 8 | AI text | AiUsageLog | Medium | ⏳ Planned |
-| 9 | Signatures + Tasks | Signature, FollowUpTask | Medium | ⏳ Planned |
-| 10 | Production readiness | — | Medium | ⏳ Planned |
+| Phase | Name                  | Entities Added                      | Effort | Status      |
+| ----- | --------------------- | ----------------------------------- | ------ | ----------- |
+| 0     | Foundation            | —                                   | Done   | ✅ Complete |
+| 1     | Skeleton cleanup      | —                                   | Small  | 🔜 Next     |
+| 2     | Property + Inspection | Property, Inspection                | Medium | ⏳ Planned  |
+| 3     | Findings              | InspectionSection, Finding          | Medium | ⏳ Planned  |
+| 4     | Photos                | FindingPhoto                        | Small  | ⏳ Planned  |
+| 5     | Report preview        | ReportTemplate                      | Medium | ⏳ Planned  |
+| 6     | PDF export            | ReportExport                        | Medium | ⏳ Planned  |
+| 7     | Templates             | InspectionTemplate, TemplateSection | Medium | ⏳ Planned  |
+| 8     | AI text               | AiUsageLog                          | Medium | ⏳ Planned  |
+| 9     | Signatures + Tasks    | Signature, FollowUpTask             | Medium | ⏳ Planned  |
+| 10    | Production readiness  | —                                   | Medium | ⏳ Planned  |

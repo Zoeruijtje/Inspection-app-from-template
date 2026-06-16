@@ -14,15 +14,15 @@
 - [x] Update PROGRESS_LOG.md
 - [ ] Commit docs
 
-## Phase 1 — Product skeleton cleanup 🔜 NEXT
+## Phase 1 — Product skeleton cleanup ✅ COMPLETE
 
-- [ ] Rename app from "OpenSaaS" / "My Open SaaS App" to "Inspection App"
-- [ ] Remove/hide irrelevant demo nav links (Documentation, Blog pointing to opensaas.sh)
-- [ ] Remove AI Scheduler from authenticated nav
-- [ ] Update landing page content (remove Open SaaS placeholder text)
-- [ ] Update nav bar constants
-- [ ] Keep: auth, admin, clients, projects, file-upload, payment, demo-app pages functional
-- [ ] Browser test all pages after cleanup
+- [x] Rename app from "OpenSaaS" / "My Open SaaS App" to "Inspection App"
+- [x] Remove/hide irrelevant demo nav links (Documentation, Blog pointing to opensaas.sh)
+- [x] Remove AI Scheduler from authenticated nav
+- [x] Update landing page content (remove Open SaaS placeholder text)
+- [x] Update nav bar constants
+- [x] Keep: auth, admin, clients, projects, file-upload, payment, demo-app pages functional
+- [x] Browser test all pages after cleanup
 - [ ] Commit
 
 ## Phase 2 — Core domain data (Property + Inspection)

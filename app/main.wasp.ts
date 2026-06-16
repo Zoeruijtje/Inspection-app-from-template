@@ -19,9 +19,9 @@ import { emailSender } from "./src/server/emailSender.wasp";
 import { userSpec } from "./src/user/user.wasp";
 
 export default app({
-  name: "OpenSaaS",
+  name: "InspectionApp",
   wasp: { version: "^0.24.0" },
-  title: "My Open SaaS App",
+  title: "Inspection App",
   head,
   auth: authConfig,
   db: {

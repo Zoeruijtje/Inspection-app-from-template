@@ -4,20 +4,19 @@ import { Link as ReactRouterLink } from "react-router";
 import { useAuth } from "wasp/client/auth";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetTrigger,
 } from "../../../client/components/ui/sheet";
 import { throttleWithTrailingInvocation } from "../../../shared/utils";
 import { UserDropdown } from "../../../user/UserDropdown";
 import { UserMenuItems } from "../../../user/UserMenuItems";
-import { useIsLandingPage } from "../../hooks/useIsLandingPage";
 import logo from "../../static/logo.webp";
 import { cn } from "../../utils";
 import { DarkModeSwitcher } from "../DarkModeSwitcher";
-import { Announcement } from "./Announcement";
+
 
 export interface NavigationItem {
   name: string;
@@ -30,7 +29,6 @@ export function NavBar({
   navigationItems: NavigationItem[];
 }) {
   const [isScrolled, setIsScrolled] = useState(false);
-  const isLandingPage = useIsLandingPage();
 
   useEffect(() => {
     const throttledHandler = throttleWithTrailingInvocation(() => {
@@ -47,7 +45,7 @@ export function NavBar({
 
   return (
     <>
-      {isLandingPage && <Announcement />}
+
       <header
         className={cn(
           "sticky top-0 z-50 transition-all duration-300",
@@ -87,7 +85,7 @@ export function NavBar({
                     },
                   )}
                 >
-                  Your SaaS
+                  Inspection App
                 </span>
               </WaspRouterLink>
 

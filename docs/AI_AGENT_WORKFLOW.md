@@ -7,10 +7,10 @@
 
 ## 1. Agent modes
 
-| Mode | When to use | Characteristics |
-|------|------------|-----------------|
-| **Plan mode** | Before large architectural/database changes, before adding new entities, before schema changes | Research-heavy, read-only exploration, produces plans |
-| **Agent mode** | Tightly scoped implementation phases, single-resource CRUD, bug fixes | Edits code, runs commands, tests in browser |
+| Mode           | When to use                                                                                    | Characteristics                                       |
+| -------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **Plan mode**  | Before large architectural/database changes, before adding new entities, before schema changes | Research-heavy, read-only exploration, produces plans |
+| **Agent mode** | Tightly scoped implementation phases, single-resource CRUD, bug fixes                          | Edits code, runs commands, tests in browser           |
 
 **Rule:** Use Plan mode for phases 2+ architecture decisions. Use Agent mode for Phase 1 (skeleton cleanup) and individual CRUD operations.
 
@@ -33,10 +33,12 @@ Before making ANY changes, the agent MUST:
    - `docs/NEXT_PROMPT.md`
 
 2. **Check git status:**
+
    ```bash
    git status --short
    git diff --stat
    ```
+
    If there are unexpected changes, STOP and explain. Do not continue blindly.
 
 3. **Identify the phase:** Which phase from `docs/ROADMAP_INSPECTION_APP.md` does this task belong to?
@@ -62,6 +64,7 @@ Before making ANY changes, the agent MUST:
 After completing implementation, the agent MUST:
 
 1. **Git status:**
+
    ```bash
    git status --short
    git diff --stat
@@ -70,6 +73,7 @@ After completing implementation, the agent MUST:
 2. **Inspect changed files:** Read each changed file to verify correctness.
 
 3. **Quality gate:**
+
    ```bash
    make check
    ```
@@ -122,22 +126,26 @@ Copy-paste this block at the end of every coding phase:
 ## 6. Phase-specific agent instructions
 
 ### For Phase 1 (Skeleton cleanup):
+
 - **Allowed files:** `app/main.wasp.ts`, nav constants, landing page components, `App.tsx`
 - **Forbidden:** Schema changes, migrations, new packages, env files
 - **Verify:** All existing pages still work after renaming
 
 ### For Phase 2+ (New resources):
+
 - **Allowed files:** `app/schema.prisma`, new feature directory, `app/main.wasp.ts`, nav constants
 - **Must:** Run `wasp db migrate-dev --name <name>` after schema change
 - **Must:** Use `tools/make-resource.mjs` for standard CRUD resources
 - **Must:** Add ownership checks to ALL operations
 
 ### For Phase 4+ (Photos/files):
+
 - **Allowed files:** As above + `app/src/file-upload/` (reuse patterns)
 - **Must:** Download URLs must be ownership-checked
 - **Must:** Never expose raw S3 keys to client
 
 ### For Phase 8 (AI):
+
 - **Must:** No automatic legal claims
 - **Must:** Log AI usage
 - **Must:** Store only previews, not full data
@@ -147,25 +155,25 @@ Copy-paste this block at the end of every coding phase:
 
 ## 7. Common mistakes to avoid
 
-| Mistake | Prevention |
-|---------|------------|
+| Mistake                                       | Prevention                                                                            |
+| --------------------------------------------- | ------------------------------------------------------------------------------------- |
 | Forgetting ownership check on nested resource | Always verify the full parent chain: Finding → Section → Inspection → Property → User |
-| Editing `.wasp/out` files | Never touch generated files |
-| Committing `.env.server` with real secrets | Check `git status` before every commit |
-| Running migration without `--name` flag | Always use `wasp db migrate-dev --name <name>` |
-| Adding new npm packages without approval | Check `AGENTS.md` constraint |
-| Broad formatting-only changes | Only change lines related to the task |
-| Assuming the app can start without env vars | The env validation issue is documented; fix is in Phase 10 |
+| Editing `.wasp/out` files                     | Never touch generated files                                                           |
+| Committing `.env.server` with real secrets    | Check `git status` before every commit                                                |
+| Running migration without `--name` flag       | Always use `wasp db migrate-dev --name <name>`                                        |
+| Adding new npm packages without approval      | Check `AGENTS.md` constraint                                                          |
+| Broad formatting-only changes                 | Only change lines related to the task                                                 |
+| Assuming the app can start without env vars   | The env validation issue is documented; fix is in Phase 10                            |
 
 ---
 
 ## 8. Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---------|-------------|-----|
-| `context.entities.X undefined` | Entity not in Wasp spec | Add entity to `entities: [...]` in the `.wasp.ts` spec file |
-| Schema changes not applying | Migration not run | `wasp db migrate-dev --name <name>` |
-| Server won't start | Missing env vars for unused providers | Known issue — Phase 10 will fix. For now, provide placeholder values. |
-| Types stale after changes | TypeScript server cache | Restart TS server (Cmd+Shift+P → "TypeScript: Restart TS server") |
-| Wasp not recognizing changes | Wasp recompiling | Wait patiently. If stuck, `wasp clean && wasp start` |
-| Prisma Client generation fails under Node 24 | Node version mismatch | Use `npx -p node@20 npx prisma generate` or switch to Node 20 |
+| Symptom                                      | Likely cause                          | Fix                                                                   |
+| -------------------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
+| `context.entities.X undefined`               | Entity not in Wasp spec               | Add entity to `entities: [...]` in the `.wasp.ts` spec file           |
+| Schema changes not applying                  | Migration not run                     | `wasp db migrate-dev --name <name>`                                   |
+| Server won't start                           | Missing env vars for unused providers | Known issue — Phase 10 will fix. For now, provide placeholder values. |
+| Types stale after changes                    | TypeScript server cache               | Restart TS server (Cmd+Shift+P → "TypeScript: Restart TS server")     |
+| Wasp not recognizing changes                 | Wasp recompiling                      | Wait patiently. If stuck, `wasp clean && wasp start`                  |
+| Prisma Client generation fails under Node 24 | Node version mismatch                 | Use `npx -p node@20 npx prisma generate` or switch to Node 20         |

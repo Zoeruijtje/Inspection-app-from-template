@@ -1,78 +1,98 @@
 # Next Prompt
 
-Use this prompt in Agent mode for Phase 1 — Product skeleton cleanup.
+Use this prompt in Agent mode for Phase 2 — Core domain data (Property + Inspection).
 
 ---
 
 You are working in the Inspection App repository at `~/dev/inspection-app`.
 
+If you discover this requires schema changes, migrations, package changes, provider/env changes, or a broad refactor, stop and produce a plan instead of implementing.
+
 ## First read these files:
 
 - `AGENTS.md`
-- `Makefile`
 - `docs/PROJECT_BRIEF.md`
-- `docs/CODEBASE_MAP.md`
 - `docs/INSPECTION_APP_ARCHITECTURE.md`
 - `docs/ROADMAP_INSPECTION_APP.md`
-- `docs/AI_AGENT_WORKFLOW.md`
+- `docs/DATABASE.md`
 - `docs/RESOURCE_PATTERN.md`
 - `docs/PERMISSIONS.md`
 - `docs/TODO.md`
 - `docs/PROGRESS_LOG.md`
+- `app/schema.prisma`
+- `app/src/clients/clients.wasp.ts`
+- `app/src/clients/operations.ts`
+- `app/src/projects/projects.wasp.ts` (if exists)
 - `app/main.wasp.ts`
-- `app/src/client/components/NavBar/constants.ts`
-- `app/src/landing-page/LandingPage.tsx`
-- `app/src/landing-page/contentSections.tsx`
-- `app/src/client/App.tsx`
+- `tools/make-resource.mjs`
 
-## Task: Phase 1 — Product skeleton cleanup
+## Task: Phase 2 — Core domain data (Property + Inspection)
 
-Rename visible app branding from Open SaaS/demo to Inspection App. Keep auth, admin, Clients. Keep Projects as-is for now. Remove or hide irrelevant demo navigation.
+Add Property and Inspection models to the database schema, build CRUD operations with ownership checks, wire up Client → Property → Inspection relationships, and add navigation.
 
-### Step 1: Rename app
+### Step 1: Add Property model
 
-In `app/main.wasp.ts`:
-- Change `name: "OpenSaaS"` to `name: "InspectionApp"`
-- Change `title: "My Open SaaS App"` to `title: "Inspection App"`
+In `app/schema.prisma`:
 
-### Step 2: Update navigation
+- Add `Property` model with fields: id, address, city, postalCode, type (enum), notes, userId (FK to User), clientId (FK to Client), createdAt, updatedAt
+- Add `PropertyType` enum: Residential, Commercial, Industrial, Government, Other
+- Add `@@index([userId])` and `@@index([clientId])`
 
-In `app/src/client/components/NavBar/constants.ts`:
-- Remove "Documentation" link pointing to `https://docs.opensaas.sh`
-- Remove "Blog" link pointing to `https://docs.opensaas.sh/blog`
-- Remove "AI Scheduler" (demo-app) from the authenticated nav items
-- Keep: Clients, Projects, File Upload
-- Remove the `marketingNavigationItems` export's external links
+### Step 2: Add Inspection model
 
-### Step 3: Update landing page
+In `app/schema.prisma`:
 
-In `app/src/landing-page/LandingPage.tsx` and `app/src/landing-page/contentSections.tsx`:
-- Replace Open SaaS placeholder text with inspection-app-relevant Dutch/English text
-- Keep it simple: "Inspection App — Bouwkundige inspecties, rapporten, en meer"
-- Remove "Star Our Repo on Github" banner
-- Replace example logos/companies with generic placeholders or remove
+- Add `Inspection` model with fields: id, title, description, status (enum), scheduledDate, completedDate, userId (FK to User), propertyId (FK to Property), clientId (FK to Client, denormalized for query convenience), createdAt, updatedAt
+- Add `InspectionStatus` enum: Planned, InProgress, Completed, Cancelled
+- Add `@@index([userId])` and `@@index([propertyId])`
 
-### Step 4: Update App.tsx if needed
+### Step 3: Generate Property CRUD
 
-Check `app/src/client/App.tsx` for any Open SaaS-specific branding and update.
+Use `tools/make-resource.mjs` to scaffold Property CRUD:
+
+- Property Wasp spec (queries + actions)
+- Property operations (create, read, update, delete with ownership checks)
+- Property page UI (list, create, edit)
+- Add Property route and nav link
+
+### Step 4: Build Inspection CRUD manually
+
+Create Inspection CRUD following the Clients/Property pattern:
+
+- Inspection Wasp spec
+- Inspection operations with ownership chain verification (user → property → inspection)
+- Inspection page UI
+- Add Inspection route and nav link
+
+### Step 5: Wire relationships
+
+- Client detail page shows linked Properties
+- Property detail page shows linked Inspections
+- Inspection form includes Property and Client selectors
+
+### Step 6: Run migration and test
+
+- Run `wasp db migrate-dev --name add_property_inspection`
+- Browser CRUD test: create/list/edit/delete Property, create/list/edit/delete Inspection
+- Verify ownership: user A cannot see user B's Properties or Inspections
+- Verify cascade: deleting a Client warns about linked Properties
 
 ## Hard constraints:
 
-- Do NOT change the database schema.
-- Do NOT run migrations.
-- Do NOT add new npm packages.
+- Every query/action MUST check `context.user` and ownership.
+- Nested resources MUST verify the parent chain (Inspection → Property → User).
+- Do NOT add new npm packages without explicit approval.
 - Do NOT edit `.env.server` or `.env`.
 - Do NOT edit generated `.wasp/out` files.
-- Do NOT remove functional pages (auth, clients, projects, file-upload, admin, demo-app, payment).
-- Only hide irrelevant navigation links — do not delete the page components.
-- Do NOT make broad formatting-only changes.
+- Follow existing patterns from Clients/Projects.
 
 ## After changes:
 
-1. Run `make check`
-2. Start app with `wasp start`
-3. Browser test: landing page, signup, login, /clients, /projects, /file-upload
-4. Verify all existing functionality still works
+1. Run `wasp db migrate-dev --name add_property_inspection`
+2. Run `make check`
+3. Start app with `wasp start`
+4. Browser test: CRUD Property, CRUD Inspection, ownership isolation
+5. Verify existing Clients/Projects still work
 
 ## Required deliverables:
 
@@ -81,4 +101,4 @@ Check `app/src/client/App.tsx` for any Open SaaS-specific branding and update.
 - Proposed commit message
 - Update `docs/PROGRESS_LOG.md`
 - Update `docs/TODO.md`
-- Update `docs/NEXT_PROMPT.md` for Phase 2
+- Update `docs/NEXT_PROMPT.md` for Phase 3

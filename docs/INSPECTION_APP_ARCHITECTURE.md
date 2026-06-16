@@ -20,75 +20,75 @@
 
 ### Phase 0-1: Existing (already implemented)
 
-| Entity | Purpose | Key Fields | Owner |
-|--------|---------|------------|-------|
-| User | Auth, profile | email, username, isAdmin, subscriptionStatus | self |
-| Client | Contact/company record | name, email, phone, companyName, notes | userId |
-| Project | Simple project tracker | name, notes | userId |
+| Entity  | Purpose                | Key Fields                                   | Owner  |
+| ------- | ---------------------- | -------------------------------------------- | ------ |
+| User    | Auth, profile          | email, username, isAdmin, subscriptionStatus | self   |
+| Client  | Contact/company record | name, email, phone, companyName, notes       | userId |
+| Project | Simple project tracker | name, notes                                  | userId |
 
 ### Phase 2: Property
 
-| Entity | Purpose | Key Fields | Relations | Owner | Phase |
-|--------|---------|------------|-----------|-------|-------|
-| Property | Building/property being inspected | address, city, postalCode, propertyType, constructionYear, notes | clientId → Client, userId → User | userId | 2 |
+| Entity   | Purpose                           | Key Fields                                                       | Relations                        | Owner  | Phase |
+| -------- | --------------------------------- | ---------------------------------------------------------------- | -------------------------------- | ------ | ----- |
+| Property | Building/property being inspected | address, city, postalCode, propertyType, constructionYear, notes | clientId → Client, userId → User | userId | 2     |
 
 **Ownership check:** Verify `userId` matches context user. If `clientId` is set, verify that Client belongs to same user.
 
 ### Phase 2-3: Inspection & Sections
 
-| Entity | Purpose | Key Fields | Relations | Owner | Phase |
-|--------|---------|------------|-----------|-------|-------|
-| Inspection | An inspection event | inspectionDate, status (draft/in_progress/completed), notes | propertyId → Property, userId → User, templateId → InspectionTemplate (nullable) | userId (via Property) | 2 |
-| InspectionSection | A section within an inspection | title, sortOrder, notes | inspectionId → Inspection | userId (via Inspection → Property) | 2 |
-| InspectionTemplate | Reusable template | name, description, sector | userId → User | userId | 7 |
-| TemplateSection | Section within a template | title, sortOrder | templateId → InspectionTemplate | userId (via Template) | 7 |
+| Entity             | Purpose                        | Key Fields                                                  | Relations                                                                        | Owner                              | Phase |
+| ------------------ | ------------------------------ | ----------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------- | ----- |
+| Inspection         | An inspection event            | inspectionDate, status (draft/in_progress/completed), notes | propertyId → Property, userId → User, templateId → InspectionTemplate (nullable) | userId (via Property)              | 2     |
+| InspectionSection  | A section within an inspection | title, sortOrder, notes                                     | inspectionId → Inspection                                                        | userId (via Inspection → Property) | 2     |
+| InspectionTemplate | Reusable template              | name, description, sector                                   | userId → User                                                                    | userId                             | 7     |
+| TemplateSection    | Section within a template      | title, sortOrder                                            | templateId → InspectionTemplate                                                  | userId (via Template)              | 7     |
 
 **Ownership check (Inspection):** Load Property by `propertyId`, verify `property.userId === context.user.id`.
 
 ### Phase 3: Finding
 
-| Entity | Purpose | Key Fields | Relations | Owner | Phase |
-|--------|---------|------------|-----------|-------|-------|
-| Finding | A defect/observation found during inspection | title, description, category, severity (low/medium/high/critical), status (open/in_progress/resolved), location, recommendation, costEstimate (optional) | sectionId → InspectionSection, inspectionId → Inspection | userId (via Section → Inspection → Property) | 3 |
+| Entity  | Purpose                                      | Key Fields                                                                                                                                               | Relations                                                | Owner                                        | Phase |
+| ------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------- | ----- |
+| Finding | A defect/observation found during inspection | title, description, category, severity (low/medium/high/critical), status (open/in_progress/resolved), location, recommendation, costEstimate (optional) | sectionId → InspectionSection, inspectionId → Inspection | userId (via Section → Inspection → Property) | 3     |
 
 **Ownership check:** Load InspectionSection by `sectionId`, then verify inspection ownership chain.
 
 ### Phase 4: FindingPhoto
 
-| Entity | Purpose | Key Fields | Relations | Owner | Phase |
-|--------|---------|------------|-----------|-------|-------|
-| FindingPhoto | Photo attached to a finding | s3Key, fileName, contentType, caption, sortOrder | findingId → Finding, fileId → File (optional) | userId (via Finding chain) | 4 |
+| Entity       | Purpose                     | Key Fields                                       | Relations                                     | Owner                      | Phase |
+| ------------ | --------------------------- | ------------------------------------------------ | --------------------------------------------- | -------------------------- | ----- |
+| FindingPhoto | Photo attached to a finding | s3Key, fileName, contentType, caption, sortOrder | findingId → Finding, fileId → File (optional) | userId (via Finding chain) | 4     |
 
 **Ownership check:** Load Finding, then verify inspection ownership chain. Use existing S3 secure download pattern.
 
 ### Phase 5: ReportTemplate & ReportExport
 
-| Entity | Purpose | Key Fields | Relations | Owner | Phase |
-|--------|---------|------------|-----------|-------|-------|
-| ReportTemplate | Report layout/branding config | name, logoUrl, primaryColor, companyName, showCompanyInfo, headerFooterConfig (JSON) | userId → User | userId | 5 |
-| ReportExport | Record of a generated report | exportType (pdf/word), status, s3Key, generatedAt | inspectionId → Inspection, userId → User | userId | 6 |
+| Entity         | Purpose                       | Key Fields                                                                           | Relations                                | Owner  | Phase |
+| -------------- | ----------------------------- | ------------------------------------------------------------------------------------ | ---------------------------------------- | ------ | ----- |
+| ReportTemplate | Report layout/branding config | name, logoUrl, primaryColor, companyName, showCompanyInfo, headerFooterConfig (JSON) | userId → User                            | userId | 5     |
+| ReportExport   | Record of a generated report  | exportType (pdf/word), status, s3Key, generatedAt                                    | inspectionId → Inspection, userId → User | userId | 6     |
 
 ### Phase 8: AI Usage Log
 
-| Entity | Purpose | Key Fields | Relations | Owner | Phase |
-|--------|---------|------------|-----------|-------|-------|
-| AiUsageLog | Record of AI-assisted text generation | promptType, inputPreview, outputPreview, modelUsed, createdAt | userId → User, findingId → Finding (nullable) | userId | 8 |
+| Entity     | Purpose                               | Key Fields                                                    | Relations                                     | Owner  | Phase |
+| ---------- | ------------------------------------- | ------------------------------------------------------------- | --------------------------------------------- | ------ | ----- |
+| AiUsageLog | Record of AI-assisted text generation | promptType, inputPreview, outputPreview, modelUsed, createdAt | userId → User, findingId → Finding (nullable) | userId | 8     |
 
 **Privacy note:** Store only previews (first 200 chars), not full inspection data. Log for audit, not training.
 
 ### Phase 9: Signature & FollowUpTask
 
-| Entity | Purpose | Key Fields | Relations | Owner | Phase |
-|--------|---------|------------|-----------|-------|-------|
-| Signature | Digital signature capture | signerName, signerRole, signatureData (base64 or S3 key), signedAt | inspectionId → Inspection | userId | 9 |
-| FollowUpTask | Task to address a finding | title, description, assignedTo, dueDate, status | findingId → Finding | userId | 9 |
+| Entity       | Purpose                   | Key Fields                                                         | Relations                 | Owner  | Phase |
+| ------------ | ------------------------- | ------------------------------------------------------------------ | ------------------------- | ------ | ----- |
+| Signature    | Digital signature capture | signerName, signerRole, signatureData (base64 or S3 key), signedAt | inspectionId → Inspection | userId | 9     |
+| FollowUpTask | Task to address a finding | title, description, assignedTo, dueDate, status                    | findingId → Finding       | userId | 9     |
 
 ### Future: Organization/Workspace (v3+)
 
-| Entity | Purpose | Key Fields | Relations | Owner | Phase |
-|--------|---------|------------|-----------|-------|-------|
-| Organization | Multi-user workspace | name, slug | — | ownerId | Future |
-| Membership | User membership in org | role (owner/admin/member/viewer) | userId → User, organizationId → Organization | — | Future |
+| Entity       | Purpose                | Key Fields                       | Relations                                    | Owner   | Phase  |
+| ------------ | ---------------------- | -------------------------------- | -------------------------------------------- | ------- | ------ |
+| Organization | Multi-user workspace   | name, slug                       | —                                            | ownerId | Future |
+| Membership   | User membership in org | role (owner/admin/member/viewer) | userId → User, organizationId → Organization | —       | Future |
 
 **Deferred:** Keep single-user ownership for MVP. Organization adds significant complexity.
 
@@ -97,34 +97,37 @@
 ## 3. Permission rules
 
 ### General rule:
+
 - **Every query/action** touching user-owned data must check `context.user` exists.
 - **Every read** must filter by `userId` or verify parent ownership chain.
 - **Every create** must set `userId` from `context.user.id`.
 - **Every update/delete** must verify ownership before mutating.
 
 ### Nested resource ownership verification pattern:
+
 ```typescript
 // Example: creating a Finding for an InspectionSection
 async (args, context) => {
-  if (!context.user) throw new HttpError(401);
+	if (!context.user) throw new HttpError(401);
 
-  // Verify section exists and belongs to user's inspection
-  const section = await context.entities.InspectionSection.findFirst({
-    where: { id: args.sectionId },
-    include: {
-      inspection: {
-        include: { property: true }
-      }
-    }
-  });
-  if (!section || section.inspection.property.userId !== context.user.id) {
-    throw new HttpError(404);
-  }
-  // ... create finding
-}
+	// Verify section exists and belongs to user's inspection
+	const section = await context.entities.InspectionSection.findFirst({
+		where: { id: args.sectionId },
+		include: {
+			inspection: {
+				include: { property: true },
+			},
+		},
+	});
+	if (!section || section.inspection.property.userId !== context.user.id) {
+		throw new HttpError(404);
+	}
+	// ... create finding
+};
 ```
 
 ### File/photo access:
+
 - Download URLs must be signed only after verifying ownership of the parent entity.
 - Never expose raw S3 keys to the client.
 - Use the existing secure download pattern from `app/src/file-upload/operations.ts`.
@@ -134,11 +137,13 @@ async (args, context) => {
 ## 4. Database index strategy
 
 For every user-owned entity, add:
+
 ```prisma
 @@index([userId])
 ```
 
 For frequently queried nested lookups:
+
 ```prisma
 @@index([inspectionId])
 @@index([sectionId])
@@ -149,17 +154,17 @@ For frequently queried nested lookups:
 
 ## 5. How to build each entity
 
-| Entity | Build method | Rationale |
-|--------|-------------|-----------|
-| Property | `tools/make-resource.mjs` + manual clientId wiring | Follows Clients pattern + adds foreign key |
-| Inspection | Manual (custom) | Complex ownership chain, multiple relations |
-| InspectionSection | Manual (custom) | Nested under Inspection, sort ordering |
-| Finding | `tools/make-resource.mjs` + manual wiring | Follows pattern + category/severity enums |
-| FindingPhoto | Manual (custom) | S3 integration, ownership chain verification |
-| ReportTemplate | `tools/make-resource.mjs` | Simple config entity |
-| ReportExport | Manual (custom) | PDF generation logic |
-| InspectionTemplate | `tools/make-resource.mjs` | Simple CRUD |
-| TemplateSection | Manual (custom) | Nested under Template |
+| Entity             | Build method                                       | Rationale                                    |
+| ------------------ | -------------------------------------------------- | -------------------------------------------- |
+| Property           | `tools/make-resource.mjs` + manual clientId wiring | Follows Clients pattern + adds foreign key   |
+| Inspection         | Manual (custom)                                    | Complex ownership chain, multiple relations  |
+| InspectionSection  | Manual (custom)                                    | Nested under Inspection, sort ordering       |
+| Finding            | `tools/make-resource.mjs` + manual wiring          | Follows pattern + category/severity enums    |
+| FindingPhoto       | Manual (custom)                                    | S3 integration, ownership chain verification |
+| ReportTemplate     | `tools/make-resource.mjs`                          | Simple config entity                         |
+| ReportExport       | Manual (custom)                                    | PDF generation logic                         |
+| InspectionTemplate | `tools/make-resource.mjs`                          | Simple CRUD                                  |
+| TemplateSection    | Manual (custom)                                    | Nested under Template                        |
 
 ---
 

@@ -7,16 +7,16 @@
 
 ## 1. Sources checked
 
-| Source | Type | What was found |
-|--------|------|----------------|
-| incontrol.app | Primary competitor (Dutch) | Full product tour, feature pages, sector solutions, pricing |
-| capterra.com / getapp.com / softwareadvice.com | Review aggregators | 300+ inspection software listings, feature comparison data, buyer guides |
-| Spectora (spectora.com) | US home inspection SaaS | 927 reviews, 4.9★, modern report writing, business automation |
-| Inspection Support Network (ISN) | US home inspection SaaS | 328 reviews, scheduling + billing + report delivery |
-| GoAudits | Mobile inspection/auditing | 145 reviews, offline checklists, automated reports |
-| SnapInspect | Property inspection | 55 reviews, property inspection + maintenance |
-| SafetyCulture (iAuditor) | General inspection | 354 reviews, checklist-based, mobile-first |
-| MaintainX | Maintenance/inspection | 1040 reviews, AI-driven, work orders, IoT |
+| Source                                         | Type                       | What was found                                                           |
+| ---------------------------------------------- | -------------------------- | ------------------------------------------------------------------------ |
+| incontrol.app                                  | Primary competitor (Dutch) | Full product tour, feature pages, sector solutions, pricing              |
+| capterra.com / getapp.com / softwareadvice.com | Review aggregators         | 300+ inspection software listings, feature comparison data, buyer guides |
+| Spectora (spectora.com)                        | US home inspection SaaS    | 927 reviews, 4.9★, modern report writing, business automation            |
+| Inspection Support Network (ISN)               | US home inspection SaaS    | 328 reviews, scheduling + billing + report delivery                      |
+| GoAudits                                       | Mobile inspection/auditing | 145 reviews, offline checklists, automated reports                       |
+| SnapInspect                                    | Property inspection        | 55 reviews, property inspection + maintenance                            |
+| SafetyCulture (iAuditor)                       | General inspection         | 354 reviews, checklist-based, mobile-first                               |
+| MaintainX                                      | Maintenance/inspection     | 1040 reviews, AI-driven, work orders, IoT                                |
 
 ---
 
@@ -25,6 +25,7 @@
 Incontrol is a Dutch B2B SaaS platform positioned as "hét platform voor de volledige inspectieflow" (the platform for the complete inspection flow). Key observations:
 
 ### 2.1 Sector-specific ready-made templates
+
 - E-installaties (electrical, SCIOS/Scope/NEN standards)
 - W-installaties (mechanical/HVAC installations)
 - Brandveiligheid (fire safety)
@@ -32,50 +33,59 @@ Incontrol is a Dutch B2B SaaS platform positioned as "hét platform voor de voll
 - Template Store with free pre-built templates
 
 ### 2.2 Multi-platform with offline
+
 - iOS app (App Store)
 - Android app (Google Play)
 - Browser web app (portal.getincontrol.eu)
 - Full offline mode — fill templates without internet, syncs when online
 
 ### 2.3 Photo & media capture
+
 - Take photos directly in-app
 - Edit/annotate photos on device
 - Add photos to inspection documents
 - "Incontrol Pins" — import floorplans, pinpoint defects on floorplan images
 
 ### 2.4 AI-assisted text
+
 - AI for fast text input and correction
 - Reduces manual typing
 - "Sneller én preciezer" (faster and more precise)
 
 ### 2.5 Digital signatures
+
 - Legally valid digital signatures ("rechtsgeldige digitale handtekening")
 - Sign documents directly on device
 
 ### 2.6 Report generation & collaboration
+
 - Auto-generate PDF reports
 - Auto-send completed reports to colleagues, clients, or third parties
 - Branded/customizable reports (white-label)
 
 ### 2.7 Defect management (Incontrol FIX)
+
 - Client portal for defect visibility
 - Status tracking of findings
 - Streamlined digital process from finding to resolution
 - Clients (building owners, property managers) get a portal view
 
 ### 2.8 Notifications & automations
+
 - Automatic alerts for deviations during inspections
 - Priority assignment to responsible persons
 - Conditional automations: dynamic templates, ticket/task creation
 - Integration triggers with external software
 
 ### 2.9 Integrations
+
 - Exact Online (Dutch accounting)
 - SignRequest (digital signatures)
 - Bluetooth device integration (Incontrol Sync — connects to measurement testers)
 - Excel data import
 
 ### 2.10 Security & compliance
+
 - ISO/IEC 27001 certified
 - AVG (GDPR) compliant
 - NIS2 directive alignment
@@ -83,6 +93,7 @@ Incontrol is a Dutch B2B SaaS platform positioned as "hét platform voor de voll
 - Hosted in ISO 27001 certified datacenter
 
 ### 2.11 Market position
+
 - 15,000+ businesses as customers
 - Dutch market first
 - 14-day free trial
@@ -90,6 +101,7 @@ Incontrol is a Dutch B2B SaaS platform positioned as "hét platform voor de voll
 - Pricing page exists with tiered plans
 
 ### 2.12 Form Builder
+
 - Custom template builder
 - Fully customizable templates and reports
 - Option to have Incontrol digitize your paper forms
@@ -98,21 +110,21 @@ Incontrol is a Dutch B2B SaaS platform positioned as "hét platform voor de voll
 
 ## 3. Comparable feature patterns (from wider market)
 
-| Feature Category | Observed In Market | Our MVP Priority |
-|-----------------|-------------------|------------------|
-| Inspection templates/checklists | ✓ Universal | Phase 7 |
-| Mobile app with offline | ✓ Universal (SafetyCulture, GoAudits, etc.) | Post-MVP (web-first MVP) |
-| Photo capture & annotation | ✓ Common (GoFormz, Spectora) | Phase 4 |
-| AI-assisted text | ✓ Emerging (MaintainX, Incontrol) | Phase 8 |
-| PDF/Word export | ✓ Universal | Phase 6 |
-| Digital signatures | ✓ Common (GoFormz, Whip Around) | Phase 9 |
-| Defect/finding tracking | ✓ Common (SnapInspect, Incontrol FIX) | Phase 3 |
-| Client portal | ✓ Incontrol FIX, ISN | Post-MVP |
-| Floorplan/pin defects | ✓ Incontrol Pins (unique) | Post-MVP |
-| Bluetooth device integration | ✓ Incontrol Sync (niche) | Not planned |
-| Accounting integration | ✓ Common (Exact, QuickBooks) | Post-MVP |
-| Scheduling/reminders | ✓ Universal | Post-MVP |
-| Branded reports | ✓ Universal | Phase 5 |
+| Feature Category                | Observed In Market                          | Our MVP Priority         |
+| ------------------------------- | ------------------------------------------- | ------------------------ |
+| Inspection templates/checklists | ✓ Universal                                 | Phase 7                  |
+| Mobile app with offline         | ✓ Universal (SafetyCulture, GoAudits, etc.) | Post-MVP (web-first MVP) |
+| Photo capture & annotation      | ✓ Common (GoFormz, Spectora)                | Phase 4                  |
+| AI-assisted text                | ✓ Emerging (MaintainX, Incontrol)           | Phase 8                  |
+| PDF/Word export                 | ✓ Universal                                 | Phase 6                  |
+| Digital signatures              | ✓ Common (GoFormz, Whip Around)             | Phase 9                  |
+| Defect/finding tracking         | ✓ Common (SnapInspect, Incontrol FIX)       | Phase 3                  |
+| Client portal                   | ✓ Incontrol FIX, ISN                        | Post-MVP                 |
+| Floorplan/pin defects           | ✓ Incontrol Pins (unique)                   | Post-MVP                 |
+| Bluetooth device integration    | ✓ Incontrol Sync (niche)                    | Not planned              |
+| Accounting integration          | ✓ Common (Exact, QuickBooks)                | Post-MVP                 |
+| Scheduling/reminders            | ✓ Universal                                 | Post-MVP                 |
+| Branded reports                 | ✓ Universal                                 | Phase 5                  |
 
 ---
 
@@ -155,6 +167,7 @@ Incontrol is a Dutch B2B SaaS platform positioned as "hét platform voor de voll
 **Positioning:** A Dutch-first building inspection/report-builder SaaS for small inspection businesses and freelancers.
 
 **Differentiators:**
+
 - **Open SaaS / Wasp stack:** Modern, maintainable, not a black-box platform
 - **AI-first text:** DeepSeek-powered AI assistance for finding descriptions, recommendations, report introductions (Phase 8)
 - **Owner-controlled data:** Inspectors own their data, templates, and reports — no vendor lock-in
