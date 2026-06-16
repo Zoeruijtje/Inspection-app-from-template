@@ -1,55 +1,84 @@
 # Next Prompt
 
-Use this prompt in Codex/DeepSeek Plan Mode for the next safe phase:
+Use this prompt in Agent mode for Phase 1 — Product skeleton cleanup.
 
-You are working in my Open SaaS / Wasp MVP factory repository.
+---
 
-First read:
+You are working in the Inspection App repository at `~/dev/inspection-app`.
 
-- AGENTS.md
-- Makefile
-- docs/PROJECT_BRIEF.md
-- docs/CODEBASE_MAP.md
-- docs/PRODUCTION_READINESS_PLAN.md
-- docs/PROVIDER_SIMPLIFICATION_PLAN.md
-- docs/ENVIRONMENT.md
-- docs/TODO.md
-- docs/PROGRESS_LOG.md
+## First read these files:
 
-Task:
-Verify the exact Zod schemas in each provider env.ts file and fix app/src/env.ts so unused provider env vars are not required at server startup.
+- `AGENTS.md`
+- `Makefile`
+- `docs/PROJECT_BRIEF.md`
+- `docs/CODEBASE_MAP.md`
+- `docs/INSPECTION_APP_ARCHITECTURE.md`
+- `docs/ROADMAP_INSPECTION_APP.md`
+- `docs/AI_AGENT_WORKFLOW.md`
+- `docs/RESOURCE_PATTERN.md`
+- `docs/PERMISSIONS.md`
+- `docs/TODO.md`
+- `docs/PROGRESS_LOG.md`
+- `app/main.wasp.ts`
+- `app/src/client/components/NavBar/constants.ts`
+- `app/src/landing-page/LandingPage.tsx`
+- `app/src/landing-page/contentSections.tsx`
+- `app/src/client/App.tsx`
 
-Context:
+## Task: Phase 1 — Product skeleton cleanup
 
-- `app/src/env.ts` currently imports and merges env schemas from auth, Stripe, LemonSqueezy, Polar, OpenAI, S3, Plausible, and Google Analytics. Many of these use `z.string()` which is required by default.
-- This is a repo-specific issue: it appears to require unused provider vars because all provider schemas are merged unconditionally.
-- The next implementation phase must read each provider env.ts file, verify which Zod validators are used (required vs optional), and determine which schemas can be made optional or removed from the merge.
+Rename visible app branding from Open SaaS/demo to Inspection App. Keep auth, admin, Clients. Keep Projects as-is for now. Remove or hide irrelevant demo navigation.
 
-Provider env files to check:
+### Step 1: Rename app
 
-- `app/src/auth/env.ts`
-- `app/src/payment/env.ts` (shared paymentPlansSchema)
-- `app/src/payment/stripe/env.ts`
-- `app/src/payment/lemonSqueezy/env.ts`
-- `app/src/payment/polar/env.ts`
-- `app/src/demo-ai-app/env.ts`
-- `app/src/file-upload/env.ts`
-- `app/src/analytics/env.ts`
+In `app/main.wasp.ts`:
+- Change `name: "OpenSaaS"` to `name: "InspectionApp"`
+- Change `title: "My Open SaaS App"` to `title: "Inspection App"`
 
-Steps:
+### Step 2: Update navigation
 
-1. Read each provider env.ts file and note exactly which Zod validators are used.
-2. Determine which schemas are truly required for the current selected defaults (auth, email provider, optionally Stripe).
-3. Update `app/src/env.ts` so only required schemas use `z.string()` in the merged validation. Make all other schemas optional with `.optional()` or remove them from the merge.
-4. Update `app/.env.server.example` to clearly mark optional vs required vars.
-5. Start the dev server with `wasp start` and confirm it starts without env validation errors when only auth + email provider vars are set.
-6. Smoke test: landing page loads, signup works, login works.
+In `app/src/client/components/NavBar/constants.ts`:
+- Remove "Documentation" link pointing to `https://docs.opensaas.sh`
+- Remove "Blog" link pointing to `https://docs.opensaas.sh/blog`
+- Remove "AI Scheduler" (demo-app) from the authenticated nav items
+- Keep: Clients, Projects, File Upload
+- Remove the `marketingNavigationItems` export's external links
 
-Notes:
+### Step 3: Update landing page
 
-- Do not change the email provider from Dummy yet — that is a separate follow-up phase.
-- Do not delete unused provider implementation files (LemonSqueezy, Polar, Google Analytics) yet.
-- Do not change providers, stack, or unrelated demo features.
-- Do not commit real secrets or `.env` files.
+In `app/src/landing-page/LandingPage.tsx` and `app/src/landing-page/contentSections.tsx`:
+- Replace Open SaaS placeholder text with inspection-app-relevant Dutch/English text
+- Keep it simple: "Inspection App — Bouwkundige inspecties, rapporten, en meer"
+- Remove "Star Our Repo on Github" banner
+- Replace example logos/companies with generic placeholders or remove
 
-After verification, update docs/TODO.md, docs/PROGRESS_LOG.md, and docs/NEXT_PROMPT.md.
+### Step 4: Update App.tsx if needed
+
+Check `app/src/client/App.tsx` for any Open SaaS-specific branding and update.
+
+## Hard constraints:
+
+- Do NOT change the database schema.
+- Do NOT run migrations.
+- Do NOT add new npm packages.
+- Do NOT edit `.env.server` or `.env`.
+- Do NOT edit generated `.wasp/out` files.
+- Do NOT remove functional pages (auth, clients, projects, file-upload, admin, demo-app, payment).
+- Only hide irrelevant navigation links — do not delete the page components.
+- Do NOT make broad formatting-only changes.
+
+## After changes:
+
+1. Run `make check`
+2. Start app with `wasp start`
+3. Browser test: landing page, signup, login, /clients, /projects, /file-upload
+4. Verify all existing functionality still works
+
+## Required deliverables:
+
+- Self-check block (see `docs/AI_AGENT_WORKFLOW.md` section 5)
+- Git diff summary
+- Proposed commit message
+- Update `docs/PROGRESS_LOG.md`
+- Update `docs/TODO.md`
+- Update `docs/NEXT_PROMPT.md` for Phase 2
