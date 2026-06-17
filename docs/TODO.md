@@ -44,23 +44,41 @@
 
 ## Phase 3A0-A — Builder feasibility spike
 
-- [ ] Standalone Vite+React prototype created (spikes/builder-dnd/)
-- [ ] @dnd-kit/react + @dnd-kit/helpers tested (current API first; legacy packages as fallback)
-- [ ] Palette-to-canvas insertion works
-- [ ] Sections and nested groups work
+- [x] Standalone Vite+React prototype created (spikes/builder-dnd/)
+- [x] @dnd-kit/react + @dnd-kit/helpers tested (current API first; legacy packages as fallback)
+- [x] DragActiveContext placement fixed for auto-scroll hook
+- [x] Module-level pointer listener removed; pointer tracking now uses React ref/effect cleanup
+- [x] Keyboard container-navigation policy documented: previous/next visible compatible container in depth-first order
+- [x] v4 pointer implementation manually classified as FAIL due to inconsistent destinations
+- [x] v4 implementation preserved under spikes/builder-dnd/archive/v4/
+- [x] v5 Stage A clean sortable rewrite implemented with `useSortable`, section `useDroppable`, and `move(items, event)` in `onDragOver`
+- [x] v5 Stage A manual pointer validation passed
+- [x] v5 sortable architecture approved as drag-and-drop foundation
+- [x] Standalone Vite visuals explicitly rejected as production design reference
+- [x] Palette-to-canvas insertion implemented
+- [x] Sections and nested groups implemented
+- [x] Stage A reorder inside Section A and Section B passes manual attempts
+- [x] Stage A move A → B passes manual attempts
+- [x] Stage A move B → A passes manual attempts
+- [x] Stage A insert at first/middle/last positions passes manual attempts
+- [x] Stage A move into empty section passes manual attempts
+- [ ] Stage B nested group added only after Stage A is manually stable
 - [ ] Cross-container drag-and-drop works
-- [ ] Mouse interaction works (drag preview, insertion indicator)
+- [ ] Mouse interaction works (drag preview, insertion indicator) — v5 manual browser acceptance still required
 - [ ] Touch interaction works (tablet viewport)
-- [ ] Keyboard interaction works (Tab/Arrow/Space/Enter)
-- [ ] Auto-scroll works near canvas edges
-- [ ] Move-up/down fallback buttons work
-- [ ] Undo/redo command stack works
-- [ ] Persistence rollback simulation works
-- [ ] Ordering strategies compared: integer, fractional, LexoRank
-- [ ] Recommendation documented in spikes/builder-dnd/README.md
+- [ ] Keyboard interaction works (Tab/Arrow/Space/Enter) — cross-container browser verification after fresh restart still required
+- [ ] Move-to operation verified in browser, including counts, exact position, undo, and redo
+- [ ] Auto-scroll works near canvas edges during an actual active pointer drag
+- [ ] Production builder UI rebuilt using app Tailwind/shadcn patterns and FORM_BUILDER_MASTER_SPEC.md, not the standalone Vite visuals
+- [x] Move-up/down fallback buttons implemented
+- [x] Undo/redo command stack implemented
+- [x] Persistence rollback simulation implemented; whole-template JSON rollback marked spike-only
+- [x] Ordering strategies compared: integer, fractional, LexoRank
+- [x] Recommendation documented in spikes/builder-dnd/README.md
 
 ## Phase 3A0-B — PDF feasibility spike
 
+- [ ] Do not start until Phase 3A0-A pointer/manual browser verification is either completed or explicitly accepted as unresolved.
 - [ ] Standalone Node.js script created (spikes/pdf-render/)
 - [ ] A4 report generated with correct dimensions
 - [ ] 5000+ char paragraph paginates without clipping

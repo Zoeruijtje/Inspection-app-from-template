@@ -9,12 +9,53 @@
 - Agent documentation being added and synchronized with the current codebase.
 - Codebase audit completed from local files only on 2026-06-16.
 - Master planning phase completed on 2026-06-17. Product redefined around generic form builder platform.
+- Phase 3A0-A v5 Stage A manual pointer validation passed; sortable architecture approved as DnD foundation.
 
 ## Next milestone
 
-Phase 3A0-A — Builder feasibility spike: verify dnd-kit as drag-and-drop candidate with current `@dnd-kit/react` + `@dnd-kit/helpers` API. Compare three ordering strategies (integer, fractional, LexoRank).
+Phase 3A0-A v5 Stage B — validate nested group sortable behavior in the isolated spike.
+
+## In progress
+
+- Phase 3A0-A v5: Stage A pointer behavior verified; Stage B nested group validation is next. Do not start the PDF spike yet.
 
 ## Completed
+
+- Phase 3A0-A v5 Stage A manual pointer validation completed 2026-06-17.
+
+- User manual testing found Stage A pointer dragging smooth and predictable.
+- Reordering within both sections worked reliably.
+- Moving blocks between sections worked reliably.
+- Dropping at first, middle, and final positions worked reliably.
+- No inconsistent jumping to the bottom was observed in the v5 rewrite.
+- No blocks disappeared or duplicated.
+- Decision recorded: v5 sortable architecture is approved as the drag-and-drop foundation.
+- Design caveat recorded: the standalone Vite visuals are not approved as final product design and must not be used as a production visual reference.
+- Production builder UI must be rebuilt later using the existing app's Tailwind/shadcn patterns, `docs/UI_RULES.md`, and `docs/FORM_BUILDER_MASTER_SPEC.md`.
+
+- Phase 3A0-A v5 Stage A sortable rewrite implemented 2026-06-17.
+
+- Manual verdict for v4 pointer implementation recorded as FAIL: blocks sometimes dropped at the bottom or unintended locations, with inconsistent behavior between attempts.
+- Preserved v4 reference implementation under `spikes/builder-dnd/archive/v4/` without intentionally archiving `node_modules` or generated build output.
+- Rebuilt the pointer-drag core around current dnd-kit sortable primitives: `DragDropProvider`, `useSortable`, section-level `useDroppable`, and `move(items, event)` during `onDragOver`.
+- Removed the active pointer core's custom drop-slot algorithm, manual `onDragEnd` insertion-index logic, native HTML5 drag for canvas blocks, and DOM-query style resolution.
+- Stage A now exposes exactly two flat sections with 5 blocks in Section A and 3 blocks in Section B. Nested groups are intentionally not implemented until Stage A is manually stable.
+- Checks run: `npx tsc --noEmit` passed; `npm run build` passed.
+- Later manual testing verified reorder, A→B, B→A, first/middle/end insertion, and empty-section behavior as stable in Stage A.
+
+- Phase 3A0-A v4 correction pass partially completed 2026-06-17.
+
+- Fixed DragActiveContext placement so an outer `BuilderCanvas` owns `isDragActive`, the provider wraps `BuilderCanvasInner`, and `useAutoScroll()` runs inside the active provider.
+- Moved `useDragOperation()` into a `CanvasDragOverlay` child under `DragDropProvider`, matching the same provider-consumer rule for dnd-kit overlay state.
+- Removed the module-level `_lastPointerY` / `window.addEventListener('pointermove')` design. Pointer Y now lives in a React ref with effect cleanup while drag is active.
+- Defined keyboard boundary navigation policy: Arrow boundary movement targets the previous/next visible compatible section/group in depth-first page order; non-adjacent moves use Move-to.
+- Escape cancel now restores the pre-lift template, undo stack, redo stack, and save status. The JSON snapshot remains explicitly spike-only.
+- `spikes/builder-dnd/README.md` updated with v4 results and clear VERIFIED PASS / PASS WITH LIMITATIONS / FAIL / UNVERIFIED categories.
+- Checks run: `npx tsc --noEmit` passed; `npm run build` passed; fresh `npm run dev -- --host 0.0.0.0` started after sandbox escalation; `curl -I http://localhost:5173/` returned HTTP 200.
+- Browser verification blocked: `agent-browser` command unavailable; Playwright Chromium install failed because Playwright does not support chromium on ubuntu26.04-x64; no Chrome/Chromium/Firefox binary found in PATH.
+- Still unverified: Move-to browser flow, fresh-browser keyboard cross-container flow, genuine manual pointer drag, auto-scroll during active pointer drag, and touch.
+
+- Phase 3A0-A — Builder feasibility spike initially completed 2026-06-17, later reopened for verification gaps.
 
 - WSL/Open SaaS baseline setup.
 - Initial AGENTS.md.
@@ -61,9 +102,28 @@ Phase 3A0-A — Builder feasibility spike: verify dnd-kit as drag-and-drop candi
 - No schema changes, no migrations, no new packages.
 - All functional pages preserved: auth, clients, projects, file-upload, admin, demo-app, payment.
 
+## Completed — Phase 3A0-A: Builder feasibility spike (2026-06-17)
+
+- Standalone Vite+React+TS prototype created at `spikes/builder-dnd/`.
+- @dnd-kit/react v0.5.0 and @dnd-kit/helpers v0.5.0 installed and tested.
+- Block palette with 30 block types in 7 categories (Structure, Display, Basic Inputs, Choice Inputs, Data/Calculation, Media, Inspection/Workflow).
+- Three-panel builder layout: palette (left), canvas (center), properties (right).
+- Click-to-add blocks from palette to active section/selected container.
+- Sections and nested groups implemented with visual borders and depth indentation.
+- Move-up/down fallback buttons on every block and container.
+- Undo/redo command stack (Ctrl+Z, Ctrl+Shift+Z) with 20-command depth.
+- Save simulation with configurable failure toggle and rollback to lastSavedSnapshot.
+- Responsive CSS: panels stack vertically below 1024px, mobile optimizations at 768px and 480px.
+- dnd-kit integration: DragDropProvider, useDraggable on blocks, useDroppable on containers, PointerSensor, KeyboardSensor, DragOverlay.
+- Auto-scroll hook (useAutoScroll) implemented but not tested without active pointer drag.
+- Full cross-container pointer drag-and-drop requires deeper sortable-group wiring — dnd-kit recommended for Phase 3D with implementation refinements noted.
+- Ordering strategies compared via benchmark: integer (O(N) writes), fractional/float (1 write per insert), LexoRank (1 write, growing string keys).
+- **Recommendation: Fractional (Float) ordering** — best balance of write efficiency, debuggability, and query simplicity for single-user template editing.
+- See `spikes/builder-dnd/README.md` for full findings and dnd-kit configuration notes.
+
 ## In progress
 
-- Phase 3A0-A: Builder feasibility spike — NEXT.
+- Phase 3A0-B: PDF feasibility spike — NEXT.
 
 ## 2026-06-17 — Master planning phase completed
 
