@@ -38,76 +38,241 @@
 - [x] Browser CRUD tests (API verified; browser auth pending email verification config)
 - [x] Update docs and next prompt
 
-## Phase 3 — Inspection findings
+## Phase 3 — Inspection findings ⛔ SUPERSEDED
 
-- [ ] Add InspectionSection model
-- [ ] Add Finding model
-- [ ] Add category, severity, status enums
-- [ ] Build Finding CRUD with ownership chain verification
-- [ ] Fast-entry UI for findings within inspection detail
-- [ ] Filter by category/severity/status
-- [ ] Run migration
-- [ ] Browser tests
+~This phase is superseded by the Form Platform Roadmap (see docs/FORM_PLATFORM_ROADMAP.md). The product has been redefined around a generic form builder platform. Inspection-specific features will be implemented as specialized template packs (Phase 3R) built on the generic platform.~
 
-## Phase 4 — Photos for findings
+## Phase 3A0-A — Builder feasibility spike
 
-- [ ] Add FindingPhoto model
-- [ ] Photo upload UI in finding detail
-- [ ] Thumbnail preview
-- [ ] Ownership-checked signed download URLs
-- [ ] Reuse existing S3 file upload pattern
-- [ ] Run migration
-- [ ] Browser tests
+- [ ] Standalone Vite+React prototype created (spikes/builder-dnd/)
+- [ ] @dnd-kit/react + @dnd-kit/helpers tested (current API first; legacy packages as fallback)
+- [ ] Palette-to-canvas insertion works
+- [ ] Sections and nested groups work
+- [ ] Cross-container drag-and-drop works
+- [ ] Mouse interaction works (drag preview, insertion indicator)
+- [ ] Touch interaction works (tablet viewport)
+- [ ] Keyboard interaction works (Tab/Arrow/Space/Enter)
+- [ ] Auto-scroll works near canvas edges
+- [ ] Move-up/down fallback buttons work
+- [ ] Undo/redo command stack works
+- [ ] Persistence rollback simulation works
+- [ ] Ordering strategies compared: integer, fractional, LexoRank
+- [ ] Recommendation documented in spikes/builder-dnd/README.md
 
-## Phase 5 — Report preview
+## Phase 3A0-B — PDF feasibility spike
 
-- [ ] Add ReportTemplate model
-- [ ] Report builder UI
-- [ ] Report preview page
-- [ ] Branding support (logo, colors)
-- [ ] No PDF yet
-- [ ] Run migration
+- [ ] Standalone Node.js script created (spikes/pdf-render/)
+- [ ] A4 report generated with correct dimensions
+- [ ] 5000+ char paragraph paginates without clipping
+- [ ] Oversized block splits at sub-boundaries
+- [ ] 50-row table with repeating headers works
+- [ ] Headers and footers with page numbers work
+- [ ] Explicit page breaks work correctly
+- [ ] 1/2/4-column photo grids render correctly
+- [ ] 500+ char captions stay with photos
+- [ ] Portrait and landscape images render without distortion
+- [ ] 50+ photos in one report works (timing + memory measured)
+- [ ] Preview-versus-PDF comparison done
+- [ ] Deployment feasibility documented (binary size, memory, cold-start)
+- [ ] Deterministic local JPEG/PNG fixtures used (no remote images)
+- [ ] Playwright header/footer limitations tested
+- [ ] Findings documented in spikes/pdf-render/README.md
 
-## Phase 6 — PDF export
+## Phase 3A — Platform architecture & schema foundation
 
-- [ ] Research Wasp-compatible PDF library
-- [ ] Add ReportExport model
-- [ ] Server-side PDF generation
-- [ ] PDF download with branding, photos, findings
-- [ ] Run migration
-- [ ] Browser/download test
+- [ ] Migration created and applied: `wasp db migrate-dev --name add_template_models`
+- [ ] make check passes
+- [ ] wasp start compiles
+- [ ] Template CRUD with ownership works
+- [ ] Version draft/publish lifecycle works
+- [ ] Published version is immutable
+- [ ] Block config validated against registry schemas
+- [ ] Another user cannot access template
+- [ ] Registry can register new block types without schema changes
+- [ ] Existing app functionality (clients, properties, inspections) preserved
+- [ ] Ordering strategy from Phase 3A0-A applied to sortOrder columns
+- [ ] Container reference approach resolved (FK vs polymorphic)
 
-## Phase 7 — Templates & checklists
+## Phase 3B — Basic template management
 
-- [ ] Add InspectionTemplate and TemplateSection models
-- [ ] Template CRUD UI
-- [ ] "Create inspection from template" flow
-- [ ] Dutch building inspection defaults
-- [ ] Run migration
+- [ ] Template list page with search and status badges
+- [ ] Create template dialog
+- [ ] Duplicate template (deep copy all blocks)
+- [ ] Archive / unarchive template
+- [ ] Version list on template detail
+- [ ] Publish with validation feedback
+- [ ] Published version is read-only; "Create new draft" prompt on edit attempt
 
-## Phase 8 — AI-assisted text
+## Phase 3C — Builder shell
 
-- [ ] DeepSeek API wrapper
-- [ ] "AI Improve" / "AI Recommend" buttons
-- [ ] AI report intro/conclusion
-- [ ] AiUsageLog model for audit trail
-- [ ] Privacy safeguards
-- [ ] Run migration
+- [ ] Three-panel layout on desktop (palette | canvas | properties)
+- [ ] Single-panel mode on mobile (< 1024px)
+- [ ] Palette: categories accordion, search, click-to-add
+- [ ] Canvas: page tabs, containers, block cards, selection highlight
+- [ ] Properties: dynamic form per block type
+- [ ] Top toolbar: title, save status, undo/redo, preview, validate, publish
+- [ ] Autosave with debounce and dirty tracking
+- [ ] Undo/redo command stack (add, delete, move, configure)
+- [ ] Keyboard: Tab through blocks, Enter to select, Delete to remove
 
-## Phase 9 — Signatures & follow-up tasks
+## Phase 3D — Drag-and-drop integration
 
-- [ ] Add Signature model
-- [ ] Add FollowUpTask model
-- [ ] Signature pad component
-- [ ] Task list and status workflow
-- [ ] Run migration
+- [ ] Drag block within section; drag between sections
+- [ ] Reorder sections within page by dragging
+- [ ] Reorder pages by dragging tabs
+- [ ] Touch drag on tablet viewport
+- [ ] Keyboard reorder without mouse (Space/Arrow/Enter)
+- [ ] Move-up/down fallback buttons visible on hover/focus
+- [ ] sortOrder persists after page reload
+- [ ] Server save failure → UI reverts to last saved state
+- [ ] Insertion indicator shows drop position during drag
+- [ ] Drag overlay shows block type icon + label
 
-## Phase 10 — Production readiness
+## Phase 3E — Baseline block registry
 
-- [ ] Fix env.ts — make unused provider schemas optional
-- [ ] Switch email from Dummy to Mailgun/SMTP
-- [ ] Guard provider-touching routes
-- [ ] Remove/disable unused Lemon Squeezy and Polar paths
-- [ ] Railway deployment dry-run
-- [ ] Security permissions review
-- [ ] Dependency audit
+- [ ] ~20 block types registered with complete entries (10 properties each)
+- [ ] Dynamic properties panel renders correct form per block type
+- [ ] Option list editor for choice blocks (add/remove/reorder)
+- [ ] Invalid config shows validation error
+- [ ] Block type icon and color-coded category indicator on canvas
+
+## Phase 3F — Advanced structural & data blocks
+
+- [ ] Column group: 2/3/4 columns, each accepts blocks independently
+- [ ] Group container: visual card, blocks nest inside, collapsible
+- [ ] Nested groups render correctly
+- [ ] Repeating group defined in builder
+- [ ] Table repeater with column definitions
+- [ ] All ~25 new block types have complete registry entries
+
+## Phase 3G — Rules & validation engine
+
+- [ ] Conditional visibility: show/hide block based on rules (9 operators, AND/OR)
+- [ ] Conditional required: make block required if condition met
+- [ ] Conditional skip: skip entire section based on condition
+- [ ] Formula: IF(condition, true_val, false_val), arithmetic, field references
+- [ ] Calculated value: SUM, AVG, MIN, MAX, COUNT aggregations
+- [ ] Cycle detection at publish time
+- [ ] Preview mode: show/hide indicators, highlight affected blocks
+- [ ] Server re-validates all rules on response save
+- [ ] No eval() or Function() constructor used
+
+## Phase 3H — Form runtime
+
+- [ ] Create instance from published template version
+- [ ] Render all block types as fillable form fields
+- [ ] Autosave after 2s inactivity with status indicator
+- [ ] Progress bar: completed required / total required
+- [ ] Required fields block submit until filled
+- [ ] Validation errors displayed inline per field
+- [ ] Save and resume: close tab, reopen, continue
+- [ ] Submit locks instance; locked instance not modifiable
+- [ ] Conditional fields show/hide in real time
+- [ ] Repeating groups: add/remove rows dynamically
+- [ ] Mobile viewport (375px): all fields usable, no horizontal scroll
+- [ ] Tablet viewport (768px): comfortable layout
+
+## Phase 3I — Media system
+
+- [ ] Upload photo within form runtime
+- [ ] Thumbnail grid with reordering
+- [ ] Caption editor
+- [ ] Delete photo with confirmation
+- [ ] Signature pad: draw with mouse/touch, clear, save
+- [ ] File attachment: upload/download via signed URL
+- [ ] Signed download URLs require auth + ownership check
+- [ ] S3 keys scoped per user
+
+## Phase 3J — Findings & workflow engine
+
+- [ ] Add finding within form runtime (separate from regular field responses)
+- [ ] Finding: title, description, category, severity, priority, status, recommendation, cost (integer cents)
+- [ ] Attach photos to finding
+- [ ] Create follow-up task with assignee and deadline
+- [ ] Task status workflow: Open → In Progress → Resolved → Closed
+- [ ] Audit trail: who created/changed findings
+- [ ] Filter findings by category, severity, status
+
+## Phase 3K — Report document model
+
+- [ ] ReportTemplate, ReportTemplateVersion, ReportBlockDefinition models
+- [ ] BrandingProfile model (colors, fonts, logo, company info)
+- [ ] ExportPreset model (paper size, orientation, margins, quality, show/hide)
+- [ ] ExportSnapshot model for deterministic regeneration
+- [ ] buildReportDocument() pure function
+- [ ] Data bindings: 7 binding statuses handled (resolved, no_response, not_applicable, hidden_by_rule, missing_binding, incompatible_type, render_error)
+- [ ] Historical report regeneration: same inputs → same ReportDocument
+- [ ] Report template versioning: draft/publish, immutable published
+
+## Phase 3L — Report designer
+
+- [ ] Report builder UI: palette, flow canvas, properties
+- [ ] Add/remove/reorder report blocks
+- [ ] Photo grid configuration: columns, aspect ratio, fit mode, spacing, captions
+- [ ] Preview report with sample data in browser
+- [ ] Page boundary visualization (A4 frames)
+- [ ] Bind report block to form field via block key selector
+- [ ] Warning when binding target doesn't exist in form template
+
+## Phase 3M — PDF renderer
+
+- [ ] Print HTML route (authenticated, ownership-checked)
+- [ ] Playwright/Chromium background job for PDF generation
+- [ ] PDF stored as FileAsset, served via signed URL
+- [ ] All 27 fixtures generate successfully
+- [ ] No text clipping in any fixture
+- [ ] No horizontal overflow in any fixture
+- [ ] Images not distorted; captions stay with photos
+- [ ] Table headers repeat on continuation pages
+- [ ] Page numbers sequential and correct
+- [ ] Headers/footers on every page (except cover if configured)
+- [ ] Draft watermark renders when configured
+- [ ] Generation time and memory usage measured (not assumed)
+- [ ] Playwright header/footer limitations documented
+- [ ] SSRF prevention: no arbitrary external URLs loaded
+
+## Phase 3N — Floor plans & pins
+
+- [ ] Upload floor plan image/PDF
+- [ ] Normalized coordinate system
+- [ ] Place numbered pins on floor plan
+- [ ] Associate pin with finding or block response
+- [ ] Pin legend generated
+- [ ] Floor plan with pins renders in PDF
+- [ ] Coordinates independent of display size
+
+## Phase 3O — Offline foundation
+
+- [ ] IndexedDB store for local response drafts
+- [ ] Media upload queue for offline
+- [ ] Sync when connectivity restored
+- [ ] Sync status indicator
+- [ ] Conflict detection: server revision vs client revision
+- [ ] Explicit conflict resolution UI (keep mine / keep server)
+
+## Phase 3P — AI builder & writing assistance
+
+- [ ] "Create template from description": AI suggests blocks/sections
+- [ ] AI-generated structure presented as draft for user review
+- [ ] "Improve finding text": rewrite rough notes professionally
+- [ ] "Generate report summary": introduction/conclusion from findings
+- [ ] AI never silently modifies published templates or completed reports
+- [ ] No full form data sent to AI — only structured prompts
+- [ ] Audit log for AI usage
+
+## Phase 3Q — Template library, roles & integrations
+
+- [ ] Publish template to library (public/private)
+- [ ] Browse and install templates from library
+- [ ] Organization model with roles (owner/admin/member/viewer)
+- [ ] Template import/export as JSON
+- [ ] Webhooks for form completion and report generation
+
+## Phase 3R — Specialized template packs
+
+- [ ] Handover inspection template pack
+- [ ] Property inspection template pack
+- [ ] Maintenance inspection template pack
+- [ ] NEN 2767-aligned pack (after authorized verification)
+- [ ] Templates use only generic builder blocks
+- [ ] No NEN-specific terminology in generic platform
