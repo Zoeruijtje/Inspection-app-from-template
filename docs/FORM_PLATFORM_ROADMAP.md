@@ -1,7 +1,7 @@
 # Form Platform Roadmap
 
 **Created:** 2026-06-17
-**Status:** Planning — 18 phases defined. Ordering strategy unresolved pending Phase 3A0-A. PDF engine preferred candidate pending Phase 3A0-B.
+**Status:** Planning — 18 phases defined. Phase 3A0-A Stage A completed and manually validated. DnD foundation is current dnd-kit sortable architecture. Ordering is `Int` with transactional renumbering. Stage B nested containers pending. Phase 3A0-B PDF spike pending.
 
 ---
 
@@ -48,22 +48,53 @@ Phase 3A0-B (PDF spike) ──────┘         │
                                 Phase 3R (Specialized packs)
 ```
 
-**Parallelism opportunities:** Phases 3D and 3E can run in parallel after 3C. Phases 3I, 3J, and 3K can run in parallel after 3H.
+**Parallelism opportunities:** Phases 3D and 3E can run in parallel after 3C. Phases 3I, 3J, and 3K can run in parallel after 3H. Phase 3A0-B may run in parallel with early Phase 3A schema/template-management work once this architecture documentation is corrected.
 
-**Critical path:** 3A0-A → 3A → 3B → 3C → 3E → 3F → 3G → 3H → 3K → 3L → 3M → 3N → 3O → 3P → 3Q → 3R
+**Critical path:** 3A0-A Stage A → 3A → 3B → 3C → 3E → 3F → 3G → 3H → 3K → 3L → 3M → 3N → 3O → 3P → 3Q → 3R
+
+Stage B should complete before nested-container production DnD is implemented. Report schema/designer/renderer decisions in Phases 3K-3M cannot be finalized until the PDF spike passes.
 
 ---
 
 ## Phase 3A0-A — Builder Feasibility Spike
 
-**Goal:** Verify dnd-kit as drag-and-drop candidate using the current `@dnd-kit/react` + `@dnd-kit/helpers` API. Compare three ordering strategies. No production code.
+**Goal:** Verify dnd-kit as drag-and-drop candidate using the current `@dnd-kit/react` + `@dnd-kit/helpers` API. Choose ordering strategy. No production code.
 
 **Prerequisites:** None.
 
+### Completed Stage A
+
+- Flat sections.
+- Same-container sorting.
+- Cross-section sorting.
+- Empty-section drops.
+- First/middle/last positions.
+- Integer ordering comparison and decision.
+- Manual Stage A pointer validation passed: no bottom-jumps, missing blocks, duplicates, or unintended destinations were observed.
+
+### Pending Stage B
+
+- Nested groups.
+- Section → group movement.
+- Group → section movement.
+- Group → group movement.
+- Empty nested groups.
+- Sorting group containers if required.
+- Regress flat-list behavior.
+
+### Pending Stage C
+
+- Touch.
+- Production keyboard flow.
+- Auto-scroll.
+- Persistence integration.
+- Responsive production behavior.
+
 **Deliverables:**
+
 - Standalone Vite+React prototype in `spikes/builder-dnd/`
-- 11 DnD criteria tested: palette-to-canvas, sections/nested groups, cross-container DnD, mouse, touch, keyboard, auto-scroll, move-up/down fallback, undo/redo, persistence rollback, no DB integration
-- 3 ordering strategies implemented and compared: integer normalization, decimal/fractional ranking, LexoRank string keys
+- DnD criteria tested in staged passes: flat containers completed; nested containers and support behavior pending
+- Ordering strategies compared with Phase 3A baseline chosen: `sortOrder: Int` with transactional source/destination renumbering
 - README.md with findings and recommendation
 
 **Exclusions:** No production schema, no Wasp integration, no database, no existing Property/Inspection records, no commits to app/.
@@ -78,13 +109,16 @@ Phase 3A0-B (PDF spike) ──────┘         │
 
 ## Phase 3A0-B — PDF Feasibility Spike
 
-**Goal:** Verify Playwright/Chromium produces quality paginated PDFs. Test 12 fixtures. Document deployment feasibility. No production code.
+**Goal:** Verify Playwright/Chromium produces quality paginated PDFs. Test 12 mandatory core feasibility fixtures. Document deployment feasibility. No production code.
 
-**Prerequisites:** Phase 3A0-A completed and reviewed.
+**Prerequisites:** Phase 3A0-A Stage A completed and reviewed. Stage B nested-container validation remains separate DnD work.
 
 **Deliverables:**
+
 - Standalone Node.js script in `spikes/pdf-render/`
-- 12 fixtures tested: A4 report, long text (5000+ chars), oversized blocks, 50-row tables with repeating headers, headers/footers/page numbers, explicit page breaks, 1/2/4-column photo grids, long captions, portrait+landscape images, 50+ photos, preview-vs-PDF comparison, deployment feasibility
+- 12 mandatory core feasibility fixtures tested: A4 report, long text (5000+ chars), oversized blocks, 50-row tables with repeating headers, headers/footers/page numbers, explicit page breaks, 1/2/4-column photo grids, long captions, portrait+landscape images, 50+ photos, preview-vs-PDF comparison, deployment feasibility
+- 15 extended fixtures retained for pre-release validation
+- 27 total planned PDF cases
 - Deterministic local JPEG/PNG fixtures (varied dimensions, aspect ratios, file sizes) — no remote images
 - README.md with findings, performance measurements, and recommendation
 
@@ -102,14 +136,15 @@ Phase 3A0-B (PDF spike) ──────┘         │
 
 **Goal:** Production data model for templates, versions, pages, containers, and blocks. Block registry infrastructure. Template CRUD with ownership. Draft/publish lifecycle. Basic CRUD pages only.
 
-**Prerequisites:** Phase 3A0-A spike completed with dnd-kit verified and ordering strategy chosen. Phase 3A0-B spike at least started (not blocking).
+**Prerequisites:** Phase 3A0-A Stage A completed with dnd-kit sortable foundation verified and integer ordering chosen. Stage B should complete before nested-container production DnD. Phase 3A0-B can run in parallel with early schema/template-management work, but PDF/report decisions are not finalized until it passes.
 
 **Schema changes (in `app/schema.prisma`):**
-- `FormTemplate`: id, name, description, category, tags, userId FK, status, timestamps. @@index([userId]).
-- `FormTemplateVersion`: id, templateId FK, versionNumber Int, status, publishedAt?, snapshot JSON?, timestamps. @@index([templateId]), @@unique([templateId, versionNumber]).
-- `FormPageDefinition`: id, templateVersionId FK, title, sortOrder (type TBD by spike), timestamps.
-- `FormContainerDefinition`: id, templateVersionId FK, containerType String, pageId FK?, parentContainerId String?, title?, config JSON?, sortOrder, timestamps.
-- `FormBlockDefinition`: id, templateVersionId FK, blockType, blockImplementationVersion Int, configSchemaVersion Int, config JSON, containerType, containerId, sortOrder, stableKey, label, required, conditionalVisibility JSON?, validation JSON?, timestamps. @@unique([templateVersionId, stableKey]).
+
+- `FormTemplate`: id, name, description, category, tags, userId FK, lifecycleStatus (`ACTIVE | ARCHIVED`), timestamps. @@index([userId]).
+- `FormTemplateVersion`: id, templateId FK, versionNumber Int, status (`DRAFT | PUBLISHED | SUPERSEDED`), publishedAt?, snapshot JSON?, snapshotSchemaVersion?, snapshotHash?, timestamps. @@index([templateId]), @@unique([templateId, versionNumber]).
+- `FormPageDefinition`: id, templateVersionId FK, title, sortOrder Int, timestamps.
+- `FormContainerDefinition`: id, templateVersionId FK, containerType String, pageId FK?, parentContainerId String?, title?, config JSON?, sortOrder Int, timestamps.
+- `FormBlockDefinition`: id, templateVersionId FK, blockType, blockImplementationVersion Int, configSchemaVersion Int, config JSON, containerId FK, sortOrder Int, stableKey, label, required, conditionalVisibility JSON?, validation JSON?, timestamps. @@index([containerId]), @@unique([templateVersionId, stableKey]).
 - `FormBlockOption`: id, blockId FK, label, value, sortOrder Int, color?, score?.
 - Reverse relations on User.
 
@@ -122,6 +157,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Security:** context.user on all ops. template.userId ownership. Published version immutability server-side. Config validated against registry schemas.
 
 **Acceptance criteria:**
+
 - [ ] Migration applied: `wasp db migrate-dev --name add_template_models`
 - [ ] `make check` passes
 - [ ] `wasp start` compiles
@@ -152,7 +188,8 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **UI:** Template list with search/status badges. Template detail with version list and publish button. Duplicate action (deep copy). Archive/unarchive.
 
 **Acceptance criteria:**
-- [ ] Template list shows Draft/Published/Archived status with color badges
+
+- [ ] Template list shows ACTIVE/ARCHIVED template lifecycle and DRAFT/PUBLISHED/SUPERSEDED version status with color badges
 - [ ] Search filters by name/description/category
 - [ ] Duplicate creates independent copy with all blocks preserved
 - [ ] Archive hides from active list; can be unarchived
@@ -176,6 +213,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **UI:** Left panel (palette with categories, search, click-to-add). Center (canvas with page tabs, containers, block cards, selection). Right panel (dynamic properties form per block type). Top toolbar (title, save status, undo/redo, preview, validate, publish).
 
 **Acceptance criteria:**
+
 - [ ] Three-panel layout on desktop (≥1024px); collapsed on tablet/mobile
 - [ ] Click block type in palette → adds to active section on canvas
 - [ ] Click block on canvas → selects it → shows properties in right panel
@@ -200,6 +238,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Dependencies:** DnD library (per spike recommendation).
 
 **Acceptance criteria:**
+
 - [ ] Drag block within section; drag between sections
 - [ ] Reorder sections within page; reorder pages via tab drag
 - [ ] Touch drag on tablet viewport
@@ -221,6 +260,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phase 3C (can run parallel with 3D).
 
 **Acceptance criteria:**
+
 - [ ] Each block type has complete registry entry (all 10 properties)
 - [ ] Dynamic properties panel renders correct form per block type
 - [ ] Option list editor for choice blocks (add/remove/reorder)
@@ -241,6 +281,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phase 3E.
 
 **Acceptance criteria:**
+
 - [ ] Column group: 2/3/4 columns, each accepts blocks independently
 - [ ] Group: visual card container, blocks nest inside
 - [ ] Nested groups: group within group renders correctly
@@ -260,6 +301,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phase 3E.
 
 **Acceptance criteria:**
+
 - [ ] Show/hide block based on another block's value (9 operators, AND/OR groups)
 - [ ] Make block required conditionally
 - [ ] Skip section based on condition
@@ -284,6 +326,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Schema changes:** FormInstance, BlockResponse, RepeatGroupInstance, RepeatGroupResponse models.
 
 **Acceptance criteria:**
+
 - [ ] Create instance from published template version
 - [ ] Render all block types as fillable form fields
 - [ ] Autosave after 2s inactivity; "Saving..." then "Saved" indicator
@@ -309,6 +352,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phase 3H.
 
 **Acceptance criteria:**
+
 - [ ] Upload photo within form runtime; appears in thumbnail grid
 - [ ] Add caption; caption persists
 - [ ] Reorder photos
@@ -330,6 +374,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phase 3H.
 
 **Acceptance criteria:**
+
 - [ ] Add finding within form runtime (separate from regular fields)
 - [ ] Finding: title, description, category, severity, priority, status, recommendation, cost (integer cents)
 - [ ] Attach photos to finding
@@ -353,13 +398,14 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Schema changes:** ReportTemplate, ReportTemplateVersion, ReportBlockDefinition, BrandingProfile, ExportPreset, ReportExport, ExportSnapshot.
 
 **Acceptance criteria:**
+
 - [ ] Create report template with report blocks
 - [ ] Bind report block to form block via stableKey
 - [ ] buildReportDocument() resolves all bindings correctly
 - [ ] Missing binding renders placeholder (not crash)
 - [ ] Branding profile applies: colors, fonts, logo
 - [ ] Export preset: paper size, orientation, margins, show/hide options
-- [ ] ReportDocument is deterministic: same inputs → same output
+- [ ] ReportDocument layout/content is deterministic for pinned inputs; byte-for-byte PDF determinism remains subject to Phase 3A0-B evidence
 
 **Complexity:** L
 
@@ -374,6 +420,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phase 3K.
 
 **Acceptance criteria:**
+
 - [ ] Report builder with palette and flow canvas
 - [ ] Add/remove/reorder report blocks
 - [ ] Configure photo grid: columns, aspect ratio, fit mode
@@ -390,16 +437,17 @@ Phase 3A0-B (PDF spike) ──────┘         │
 
 ## Phase 3M — PDF Renderer
 
-**Goal:** Print HTML route, Playwright/Chromium PDF generation, storage, download, 27-fixture suite.
+**Goal:** Print HTML route, Playwright/Chromium PDF generation, storage, download, 27-case fixture suite.
 
 **Prerequisites:** Phase 3K, 3L. Phase 3A0-B spike confirmed PDF candidate.
 
 **Dependencies:** `playwright`
 
 **Acceptance criteria:**
+
 - [ ] Generate PDF from completed instance + report template + branding + preset
 - [ ] PDF downloads via signed URL
-- [ ] All 27 fixtures generate successfully
+- [ ] All 12 core feasibility fixtures and 15 extended validation fixtures generate successfully before release-ready PDF claims
 - [ ] No text clipping in any fixture
 - [ ] No horizontal overflow in any fixture
 - [ ] Images not distorted
@@ -413,7 +461,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 
 **Complexity:** XL
 
-**Commit:** `feat: phase 3m — PDF rendering engine with Playwright and 27-fixture suite`
+**Commit:** `feat: phase 3m — PDF rendering engine with Playwright and 27-case fixture suite`
 
 ---
 
@@ -424,6 +472,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phase 3I, 3J, 3M.
 
 **Acceptance criteria:**
+
 - [ ] Upload floor plan image/PDF
 - [ ] Place numbered pins on floor plan
 - [ ] Associate pin with finding
@@ -444,6 +493,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phase 3H, 3I.
 
 **Acceptance criteria:**
+
 - [ ] Form responses saved to IndexedDB when offline
 - [ ] Media added to upload queue when offline
 - [ ] Sync when connectivity restored
@@ -463,6 +513,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phases 3A-3M stable.
 
 **Acceptance criteria:**
+
 - [ ] "Create template from description": AI suggests blocks/sections
 - [ ] AI-generated structure presented as draft for review
 - [ ] "Improve finding text": rewrite rough notes professionally
@@ -483,6 +534,7 @@ Phase 3A0-B (PDF spike) ──────┘         │
 **Prerequisites:** Phases 3A-3P stable.
 
 **Acceptance criteria:**
+
 - [ ] Publish template to library (public/private)
 - [ ] Browse and install templates from library
 - [ ] Organization: multi-user workspace with roles
@@ -497,15 +549,16 @@ Phase 3A0-B (PDF spike) ──────┘         │
 
 ## Phase 3R — Specialized Template Packs
 
-**Goal:** Pre-built templates for handover inspection, property inspection, maintenance inspection, NEN 2767-aligned pack (after authorized verification).
+**Goal:** Pre-built templates for handover inspection, property inspection, maintenance inspection, NEN 2767-aligned pack after qualified independent domain review and, where applicable, review by NEN or an appropriate conformity-assessment or certification body.
 
 **Prerequisites:** Phase 3Q.
 
 **Acceptance criteria:**
+
 - [ ] Handover inspection template pack
 - [ ] Property inspection template pack
 - [ ] Maintenance inspection template pack
-- [ ] NEN 2767-aligned pack (after authorized verification)
+- [ ] NEN 2767-aligned pack after qualified independent domain review and applicable conformity review
 - [ ] Templates installable from library
 - [ ] Templates use only generic builder blocks (no custom code)
 
@@ -517,9 +570,9 @@ Phase 3A0-B (PDF spike) ──────┘         │
 
 ## Complexity Summary
 
-| Complexity | Phases |
-|-----------|--------|
-| S | — |
-| M | 3A0-A, 3A0-B, 3B, 3N, 3P, 3R |
-| L | 3D, 3E, 3F, 3G, 3I, 3J, 3K, 3L, 3O |
-| XL | 3A, 3C, 3H, 3M, 3Q |
+| Complexity | Phases                             |
+| ---------- | ---------------------------------- |
+| S          | —                                  |
+| M          | 3A0-A, 3A0-B, 3B, 3N, 3P, 3R       |
+| L          | 3D, 3E, 3F, 3G, 3I, 3J, 3K, 3L, 3O |
+| XL         | 3A, 3C, 3H, 3M, 3Q                 |

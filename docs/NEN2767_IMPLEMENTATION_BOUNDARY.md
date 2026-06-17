@@ -15,7 +15,7 @@ The platform is a **generic form-and-report builder**. "Building inspection" is 
 
 ## What the Generic Builder Provides
 
-The generic builder's block catalogue provides sufficient building blocks to construct NEN 2767-style inspection templates once authorized verification is obtained:
+The generic builder's block catalogue provides sufficient building blocks to construct NEN 2767-style inspection templates after qualified independent domain review and, where applicable, review by NEN or an appropriate conformity-assessment or certification body:
 
 - **Component/element selectors:** Choice blocks (`single_select`, `multi_select`, `radio_group`, `checkbox_group`) can list building elements organized by NEN 2767's element structure
 - **Structured defect records:** Finding blocks (`finding`, `defect_assessment`) capture title, description, category, severity, priority, status, recommendation, and cost
@@ -29,9 +29,9 @@ The generic builder's block catalogue provides sufficient building blocks to con
 
 ## Hard Boundaries
 
-### Boundary 1 — No normative calculations without authorized verification
+### Boundary 1 — No normative calculations without qualified review
 
-Any calculation that produces a NEN 2767 condition score, aggregate index, or normative assessment MUST be verified by a qualified Dutch building standards body before being offered to users.
+Any calculation that produces a NEN 2767 condition score, aggregate index, or normative assessment MUST receive qualified independent domain review and, where applicable, review by NEN or an appropriate conformity-assessment or certification body before being offered to users.
 
 The platform may provide **generic calculation tools** (formulas, aggregations, scoring) that users can configure themselves. It may **not** ship pre-configured NEN 2767 normative formulas claiming standard compliance without verification.
 
@@ -41,9 +41,12 @@ The platform must not claim that using a NEN 2767 template produces a "NEN 2767-
 
 Template descriptions may state "designed to support NEN 2767 condition assessment workflows" but must not state "NEN 2767-certified" or "NEN 2767-compliant" without certified review.
 
+The software platform itself does not certify an inspection. Template review does not certify the user's methodology, execution, licensing, or final report claims. Final legal/commercial wording depends on the exact licensing, review, and conformity context and must be reviewed before launch.
+
 ### Boundary 3 — No NEN-specific terminology in the generic builder
 
 The generic builder, block registry, and core platform must not hardcode NEN 2767-specific terminology such as:
+
 - "Gebrek" (defect — use generic "finding" or "defect")
 - "Intensiteit" (intensity — use generic "severity")
 - "Omvang" (extent — use generic "extent" or "scope")
@@ -55,6 +58,7 @@ These terms may appear **only** within the specialized NEN 2767 template pack, i
 ### Boundary 4 — NEN templates are optional, user-installable packs
 
 NEN 2767 templates must not be:
+
 - Pre-installed as default templates
 - Required for any core platform function
 - Referenced in generic platform UI or documentation as the primary use case
@@ -65,6 +69,7 @@ They are optional template packs that users choose to install from the template 
 ### Boundary 5 — The generic builder must not assume inspection semantics
 
 The form builder must treat every form as a generic data collection workflow. It must not:
+
 - Assume every form is an inspection
 - Assume every response is a defect or finding
 - Assume a specific severity scale (1-6 or otherwise)
@@ -75,15 +80,16 @@ These semantics are configured by template authors through the block registry's 
 
 ---
 
-## What "Authorized Verification" Means
+## What Qualified Review Means
 
-Authorized verification for NEN 2767 normative content means review by an entity qualified to assess compliance with NEN standards. Possible entities include:
+Qualified review for NEN 2767 normative content means qualified independent domain review and, where applicable, review by NEN or an appropriate conformity-assessment or certification body. Possible reviewers include:
+
 - NEN (Stichting Koninklijk Nederlands Normalisatie Instituut)
 - A recognized building standards certification body
 - A licensed building engineer or inspection authority with NEN 2767 expertise
 - An industry association with recognized standing in Dutch building inspection
 
-Self-certification by the platform developer is not sufficient for normative calculations or compliance claims.
+Self-certification by the platform developer is not sufficient for normative calculations or compliance claims. Do not reproduce protected normative standard content in product documentation, source code, or templates unless licensing explicitly permits it.
 
 ---
 
@@ -92,5 +98,5 @@ Self-certification by the platform developer is not sufficient for normative cal
 1. Complete the generic builder, form runtime, and report engine (Phases 3A-3M)
 2. Build a NEN 2767 template using only generic builder blocks and user-configurable labels
 3. Engage a qualified building standards expert to review the template structure and any pre-configured calculations
-4. After authorized verification, offer the template as an optional pack in the template library
+4. After qualified review, offer the template as an optional pack in the template library
 5. Document clearly: "This template is designed to support NEN 2767 workflows. Users are responsible for ensuring their inspections meet NEN 2767 requirements."

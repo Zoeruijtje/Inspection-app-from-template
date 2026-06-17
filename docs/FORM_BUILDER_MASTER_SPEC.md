@@ -26,6 +26,7 @@ The template builder is a **desktop-first, three-panel web application** for con
 On viewports narrower than 1024px, panels collapse into a single-column mode with a bottom tab bar: Canvas | Palette | Properties.
 
 ### Design principles
+
 - **Visual fidelity:** The canvas preview should closely represent how the form will appear at runtime
 - **Direct manipulation:** Click to select; drag to reorder; type to edit labels
 - **Undo everywhere:** Every mutation is reversible
@@ -39,6 +40,7 @@ On viewports narrower than 1024px, panels collapse into a single-column mode wit
 The palette displays all available block types organized by category.
 
 ### Categories (in order)
+
 1. **Structure** — pages, sections, groups, columns, repeaters, dividers, spacers, page breaks
 2. **Display / Content** — headings, paragraphs, rich text, instructions, static images, auto-filled details, disclaimers
 3. **Basic Inputs** — short text, long text, number, decimal, currency, date, time, email, phone, URL, yes/no, checkbox, rating, measurement
@@ -50,6 +52,7 @@ The palette displays all available block types organized by category.
 9. **Advanced** — deferred blocks (matrix, drawing, barcode, chart, lookup)
 
 ### Palette behavior
+
 - Each category is a collapsible accordion section
 - Within each category, block types are shown as cards with: icon (lucide-react), label, and brief description tooltip
 - **Search:** A search input at the top filters blocks by name or description across all categories
@@ -65,6 +68,7 @@ The palette displays all available block types organized by category.
 The canvas displays the template structure as a nested, visual tree.
 
 ### Page tabs
+
 - Shown as horizontal tabs across the top of the canvas
 - Each tab shows the page title (editable on double-click) and an unsaved-change dot
 - "+" tab to add a new page
@@ -72,6 +76,7 @@ The canvas displays the template structure as a nested, visual tree.
 - Right-click a tab: Rename, Duplicate, Delete (with confirmation)
 
 ### Containers (sections, groups, columns)
+
 - Each page contains one or more section containers
 - Sections are shown as bordered regions with a title bar
 - Groups are shown as nested bordered regions inside sections or other groups
@@ -81,14 +86,16 @@ The canvas displays the template structure as a nested, visual tree.
 - Containers can be collapsed in the builder (title bar click) to reduce visual noise
 
 ### Block cards
+
 - Each block is shown as a horizontal card within its container
-- Card shows: block type icon (color-coded by category), label text, required indicator (*), conditional indicator (◇)
+- Card shows: block type icon (color-coded by category), label text, required indicator (\*), conditional indicator (◇)
 - Click a card to select it → blue highlight border, properties load in right panel
 - Selected card shows action buttons: ↥ (move up), ↧ (move down), ⧉ (duplicate), ✕ (delete)
 - Drag handle on the left edge of each card (Phase 3D)
 - Cards show validation errors as red left-border with an error count badge
 
 ### Visual states
+
 - **Normal:** Card with border, icon, label
 - **Selected:** Blue border, subtle blue background
 - **Dragging:** Semi-transparent, raised shadow (Phase 3D)
@@ -98,6 +105,7 @@ The canvas displays the template structure as a nested, visual tree.
 - **Required:** Red asterisk after label
 
 ### Canvas interactions
+
 - Click empty area: deselect current block
 - Escape: deselect current block
 - Double-click block label: inline edit label
@@ -110,6 +118,7 @@ The canvas displays the template structure as a nested, visual tree.
 The properties panel shows configuration for the selected block, container, or page.
 
 ### Tabs
+
 1. **Content** — primary configuration (label, placeholder, default value, options list, heading level, etc.)
 2. **Validation** — required toggle, min/max constraints, regex pattern, custom error message
 3. **Logic** — conditional visibility rules; show this block when... (Phase 3G)
@@ -119,27 +128,29 @@ The properties panel shows configuration for the selected block, container, or p
 7. **Advanced** — block implementation version, config schema version (read-only debug info)
 
 ### Dynamic form rendering
+
 The Content tab renders a form specific to the selected block type:
 
-| Block Type | Content Fields |
-|-----------|---------------|
-| `heading` | Level (h1/h2/h3/h4), Text |
-| `paragraph` | Text (textarea), Text formatting toggle |
-| `short_text` | Label, Placeholder, Default value, Max length |
-| `long_text` | Label, Placeholder, Default value, Rows |
-| `number` | Label, Min, Max, Step, Default, Unit label |
-| `currency` | Label, Currency code (EUR/USD/GBP), Min, Max |
-| `date` | Label, Min date, Max date, Default (today/none/specific) |
-| `yes_no` | Label, Default (unset/yes/no), Display as (toggle/radio) |
+| Block Type      | Content Fields                                                 |
+| --------------- | -------------------------------------------------------------- |
+| `heading`       | Level (h1/h2/h3/h4), Text                                      |
+| `paragraph`     | Text (textarea), Text formatting toggle                        |
+| `short_text`    | Label, Placeholder, Default value, Max length                  |
+| `long_text`     | Label, Placeholder, Default value, Rows                        |
+| `number`        | Label, Min, Max, Step, Default, Unit label                     |
+| `currency`      | Label, Currency code (EUR/USD/GBP), Min, Max                   |
+| `date`          | Label, Min date, Max date, Default (today/none/specific)       |
+| `yes_no`        | Label, Default (unset/yes/no), Display as (toggle/radio)       |
 | `single_select` | Label, Options list (add/remove/reorder), Default, Allow other |
-| `multi_select` | Label, Options list, Min selections, Max selections |
-| `checkbox` | Label, Checked by default |
-| `static_image` | Image source (upload/URL), Alt text, Caption, Width |
-| `divider` | Style (solid/dashed/dotted), Thickness, Color |
-| `page_break` | (no configurable properties) |
-| `section` | Title, Collapsible, Initially collapsed |
+| `multi_select`  | Label, Options list, Min selections, Max selections            |
+| `checkbox`      | Label, Checked by default                                      |
+| `static_image`  | Image source (upload/URL), Alt text, Caption, Width            |
+| `divider`       | Style (solid/dashed/dotted), Thickness, Color                  |
+| `page_break`    | (no configurable properties)                                   |
+| `section`       | Title, Collapsible, Initially collapsed                        |
 
 ### Properties behavior
+
 - Changes are saved on blur or after a 1-second debounce
 - Unsaved changes show a subtle highlight on the modified field
 - Validation errors appear inline below the field
@@ -150,6 +161,7 @@ The Content tab renders a form specific to the selected block type:
 ## 5. Top Toolbar
 
 ### Left section
+
 - **Template title:** Editable inline text field. Click to edit, Enter to save, Escape to cancel.
 - **Save status indicator:**
   - ✓ Saved (green) — all changes persisted
@@ -158,11 +170,13 @@ The Content tab renders a form specific to the selected block type:
   - ✕ Error (red) — save failed; click to retry
 
 ### Center section
+
 - **Undo** (↶) — keyboard: Ctrl+Z
 - **Redo** (↷) — keyboard: Ctrl+Shift+Z or Ctrl+Y
 - Both buttons show disabled state when nothing to undo/redo
 
 ### Right section
+
 - **Preview Form** (eye icon) — opens the form as an end-user would see it in a new tab or modal
 - **Preview Report** (document icon) — opens report preview (future)
 - **Validate** (checkmark icon) — runs full template validation, shows error list in a dialog
@@ -174,11 +188,24 @@ The Content tab renders a form specific to the selected block type:
 
 ## 6. Drag-and-Drop Behavior (Phase 3D)
 
-### Preferred candidate: dnd-kit (@dnd-kit/react, @dnd-kit/helpers)
+### Phase 3A0-A validated decision
 
-The current dnd-kit React API uses `@dnd-kit/react` and `@dnd-kit/helpers`. The legacy `@dnd-kit/core`, `@dnd-kit/sortable`, and `@dnd-kit/utilities` packages are the older API. Phase 3A0-A spike must test the current API first; the legacy packages may be tested as a comparison or fallback.
+Phase 3A0-A v5 Stage A manually validated the current dnd-kit sortable architecture for flat compatible containers:
+
+- `@dnd-kit/react` and `@dnd-kit/helpers` are approved as the drag-and-drop foundation.
+- Blocks are sortable items using `useSortable`.
+- Compatible containers share sortable groups and expose root/nested container droppables.
+- Controlled React state updates happen during `onDragOver` with `move(items, event)`.
+- Drag cancel restores the pre-drag snapshot/transaction state.
+- Integer ordering with transactional source/destination renumbering is approved for initial persistence.
+- The previous custom drop-slot architecture is rejected.
+
+Nested groups, sortable containers themselves, touch, final keyboard flow, production auto-scroll, and production visual styling remain pending Stage B/C validation.
+
+The standalone Vite spike validates interaction architecture only. Production UI must use the existing application's Tailwind/shadcn conventions and remain the desktop-first three-panel builder described in this document. Reuse the smooth sortable state architecture without copying the spike's visual styling.
 
 ### Required DnD capabilities
+
 - **Sortable containers:** Reorder pages, sections within a page, groups within a section, blocks within any container
 - **Cross-container movement:** Drag a block from section A to section B; from a group to a section; from a section into a group
 - **Insertion indicators:** A horizontal line appears between blocks at the drop position during drag
@@ -187,28 +214,28 @@ The current dnd-kit React API uses `@dnd-kit/react` and `@dnd-kit/helpers`. The 
 - **Keyboard alternatives:** Every drag operation achievable without a mouse (see Section 7)
 - **Auto-scroll:** Canvas scrolls when dragging near the top or bottom edge
 - **Collision detection:** Correctly identifies the drop target in nested sortable areas
+- **Architecture guardrail:** Do not add custom gap droppables for every possible insertion point unless a future measured requirement proves the official sortable architecture insufficient
 
-### Move-up/down fallback
+### Movement fallbacks
+
 - Every block card shows ↑ and ↓ buttons on the right side (visible on hover, always visible on focus)
 - ↑ moves the block up one position within its container
 - ↓ moves the block down one position
 - At the first position, ↑ is disabled. At the last position, ↓ is disabled.
 - These buttons work completely independently of drag-and-drop
-- Additionally: a "Move to..." dropdown in the block context menu allows relocating a block to a different container
+- Additionally: a "Move to..." dropdown in the block context menu allows relocating a block to a different compatible container and destination position
+- Every movement must be achievable through keyboard interaction or the "Move to..." dialog/menu. Move-up/down buttons alone are insufficient for cross-container movement.
 
-### Ordering strategy (UNRESOLVED)
-The sort-order persistence strategy is **unresolved** as of this specification. Phase 3A0-A must compare:
-1. Integer positions with transactional normalization
-2. Decimal/fractional ranking with periodic normalization
-3. LexoRank-style string keys with periodic rebalancing
+### Ordering persistence
 
-The chosen strategy will determine the `sortOrder` column type in the production schema (Phase 3A).
+Use `sortOrder: Int` with transactional normalization. Moving within one container renumbers that container to `0, 1, 2, ...`; moving across containers renumbers both source and destination containers in one transaction. Persist only committed movement, and roll back local optimistic state if the save fails.
 
 ---
 
 ## 7. Keyboard and Accessibility
 
 ### Keyboard navigation
+
 - **Tab:** Move focus between interactive elements (toolbar → palette → canvas blocks → properties)
 - **Arrow keys (canvas focused):** Navigate between blocks
 - **Enter (on block):** Select block → Enter again to open properties
@@ -219,6 +246,7 @@ The chosen strategy will determine the `sortOrder` column type in the production
 - **Escape:** Deselect block / close dialog / cancel drag
 
 ### Screen-reader announcements
+
 - "Block [label] of type [type] added to [container]"
 - "Block [label] moved to position [N] in [container]"
 - "Block [label] deleted"
@@ -227,6 +255,7 @@ The chosen strategy will determine the `sortOrder` column type in the production
 - Live region for drag-and-drop: "Dragging [label]. Drop position [N]."
 
 ### Visual accessibility
+
 - Focus indicators visible on all interactive elements (2px outline, high contrast)
 - Color is never the only differentiator: block type icons and text labels supplement color coding
 - Error states use both color (red) and icon (⚠) with text description
@@ -235,6 +264,7 @@ The chosen strategy will determine the `sortOrder` column type in the production
 - Sufficient color contrast (WCAG AA minimum)
 
 ### Touch targets
+
 - Minimum 44×44px for all interactive elements (block cards, buttons, palette items)
 - Adequate spacing between touch targets to prevent mis-taps
 
@@ -243,12 +273,14 @@ The chosen strategy will determine the `sortOrder` column type in the production
 ## 8. Undo/Redo System
 
 ### Architecture
+
 - **Command pattern:** Every mutation is wrapped in a reversible command object
 - **Command stack:** Array of executed commands; maximum depth 50
 - **Redo stack:** Cleared when a new command is executed (not undone)
 - **Stack cleared** when switching templates
 
 ### Command types
+
 - `AddBlockCommand` — reverse: delete block
 - `DeleteBlockCommand` — reverse: re-add block at original position with original config
 - `DuplicateBlockCommand` — reverse: delete duplicated block
@@ -263,6 +295,7 @@ The chosen strategy will determine the `sortOrder` column type in the production
 - `ReorderContainersCommand` — reverse: restore previous order
 
 ### Constraints
+
 - Undo/redo does NOT trigger autosave immediately; changes are batched
 - After undo/redo, the autosave debounce timer resets
 - If the server rejects an undo/redo operation (e.g., referenced block no longer exists), the local state reverts
@@ -272,28 +305,33 @@ The chosen strategy will determine the `sortOrder` column type in the production
 ## 9. Autosave Strategy
 
 ### Timing
+
 - **Debounce:** 1 second after the last change
 - **Exceptions:** No save during active drag operation; save triggers on drop
 
 ### Dirty tracking
+
 - Client maintains a `Set<string>` of changed block IDs
 - Only dirty blocks are sent to the server
 - On successful save, dirty set is cleared
 - On failed save, dirty set is preserved; retry on next change
 
 ### Save status display
+
 - **Saved:** Green checkmark, "All changes saved"
 - **Dirty:** Yellow dot, "Unsaved changes"
 - **Saving:** Blue spinner, "Saving..."
 - **Error:** Red X, "Save failed — click to retry"
 
 ### Conflict handling
+
 - Each save includes a `expectedVersion` (template version's updatedAt timestamp)
 - If server returns 409 Conflict: another session modified the template
 - UI shows: "This template was modified in another session. Please reload to continue."
 - User must reload before making further changes
 
 ### Save data
+
 - Only changed fields are sent (sparse update)
 - Server validates: block belongs to template version, user owns template
 - Server returns the updated record(s) with new timestamps
@@ -304,17 +342,20 @@ The chosen strategy will determine the `sortOrder` column type in the production
 ## 10. Template Lifecycle
 
 ### Create
+
 1. User clicks "New Template" from template list
 2. Dialog: name (required), description (optional), category (optional), tags (optional)
 3. On submit: server creates FormTemplate + draft FormTemplateVersion #1
 4. User is redirected to the builder for the new draft
 
 ### Draft editing
+
 - Freely add, remove, reorder, and configure pages, containers, and blocks
 - All changes saved to the draft version
 - No effect on any published version or form instance
 
 ### Validate
+
 - User clicks "Validate" or validation runs automatically before publish
 - Server checks:
   - All blocks have valid configs (per registry schemas)
@@ -326,15 +367,18 @@ The chosen strategy will determine the `sortOrder` column type in the production
 - Results shown in a dialog: "✓ Template is valid" or "✕ [N] issues found" with a list
 
 ### Publish
+
 1. User clicks "Publish"
 2. Confirmation dialog: "Publish version [N]? Published versions cannot be edited. Form instances will use this version."
 3. Server validates template
-4. If valid: version status → Published, publishedAt timestamp set, version number recorded
+4. If valid: version status → `PUBLISHED`, publishedAt timestamp set, version number recorded
 5. Version becomes immutable (server-enforced)
-6. Snapshot: full block tree serialized into version's snapshot JSON field
-7. If form instances exist from previous versions, they are unaffected
+6. Snapshot: full block tree serialized into version's snapshot JSON field with snapshot schema version and integrity hash
+7. If a newer version is published later, the previous latest published version may become `SUPERSEDED` but remains available for historical instances
+8. If form instances exist from previous versions, they are unaffected
 
 ### New draft from published
+
 1. User opens a published version
 2. Clicks "Create new draft" (prompted automatically when attempting to edit)
 3. Server creates a new draft version, copying all blocks from the published version
@@ -342,12 +386,14 @@ The chosen strategy will determine the `sortOrder` column type in the production
 5. User is redirected to the builder for the new draft
 
 ### Archive
-- Template status → Archived
+
+- Template lifecycleStatus → `ARCHIVED`
 - Template hidden from default list (can show archived with filter)
 - Published versions remain accessible for historical instances
 - Can be unarchived
 
 ### Duplicate
+
 - Creates a new template owned by the current user
 - Deep-copies all blocks from the latest draft or published version
 - New template starts with draft version #1
@@ -358,14 +404,18 @@ The chosen strategy will determine the `sortOrder` column type in the production
 ## 11. Version Model
 
 ### Data model (conceptual)
+
 - `FormTemplate` — one template, many versions
-- `FormTemplateVersion` — versionNumber, status (Draft|Published|Archived), snapshot JSON
+- `FormTemplate.lifecycleStatus` — `ACTIVE | ARCHIVED`
+- `FormTemplateVersion` — versionNumber, status (`DRAFT | PUBLISHED | SUPERSEDED`), snapshot JSON
 - Versions are numbered sequentially: 1, 2, 3, ...
-- Status transitions: Draft → Published; Published → Archived (via template archival)
+- Status transitions: version `DRAFT → PUBLISHED → SUPERSEDED`; template `ACTIVE ↔ ARCHIVED`
 - Published versions are **immutable** (server-enforced in all update/delete operations)
 
 ### Snapshot strategy
+
 On publish, the full block tree is serialized into the version's `snapshot` JSON field:
+
 - All pages with their sortOrder
 - All containers with their sortOrder, config, and nesting
 - All blocks with their sortOrder, config, options, stableKey, and conditional logic
@@ -374,6 +424,7 @@ On publish, the full block tree is serialized into the version's `snapshot` JSON
 This makes each published version fully self-contained. Historical instances reference the version; the version's snapshot contains everything needed to render or validate that instance.
 
 ### Constraints
+
 - A version cannot be deleted if any `FormInstance` references it
 - A published version cannot be edited (server returns 409 Conflict)
 - Version numbers are immutable
@@ -384,17 +435,20 @@ This makes each published version fully self-contained. Historical instances ref
 ## 12. Conditional Logic Builder (Phase 3G)
 
 ### Rule format (declarative JSON)
+
 Rules are stored as JSON, never as executable code:
+
 ```json
 {
-  "operator": "and",
-  "conditions": [
-    { "blockKey": "roof_type", "operator": "equals", "value": "flat" }
-  ]
+	"operator": "and",
+	"conditions": [
+		{ "blockKey": "roof_type", "operator": "equals", "value": "flat" }
+	]
 }
 ```
 
 ### Supported operators
+
 - Comparison: `equals`, `not_equals`, `greater_than`, `less_than`, `greater_than_or_equal`, `less_than_or_equal`
 - Text: `contains`, `not_contains`, `starts_with`, `ends_with`, `matches_regex`
 - Existence: `is_empty`, `is_not_empty`
@@ -402,6 +456,7 @@ Rules are stored as JSON, never as executable code:
 - Grouping: `and`, `or` (nested)
 
 ### Rule composer UI
+
 - Visual rule builder with AND/OR group toggles
 - Field selector: dropdown of all blocks in the template (by stableKey + label)
 - Operator selector: filtered by the referenced field's type
@@ -410,6 +465,7 @@ Rules are stored as JSON, never as executable code:
 - Debug mode: each block on canvas shows whether its visibility condition is currently true/false based on sample data
 
 ### Constraints
+
 - Rules reference blocks by stableKey only (never by database ID)
 - Rules are validated server-side: referenced keys must exist, operators must be valid for the field type
 - Cycle detection at publish time: topological sort of all rules, reject if cycles detected
@@ -420,6 +476,7 @@ Rules are stored as JSON, never as executable code:
 ## 13. Formula Builder (Phase 3G)
 
 ### Supported expressions
+
 - Arithmetic: `+`, `-`, `*`, `/`, `( )`
 - Comparisons: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - Conditional: `IF(condition, true_value, false_value)`
@@ -430,6 +487,7 @@ Rules are stored as JSON, never as executable code:
 Example: `IF({roof_condition} < 3, 'Poor', IF({roof_condition} < 5, 'Fair', 'Good'))`
 
 ### Safety
+
 - Custom tokenizer and AST evaluator — no `eval()`, no `Function()` constructor
 - Type checking: number operations on numbers, string concatenation, boolean comparisons
 - Division by zero: returns null with error flag
@@ -437,6 +495,7 @@ Example: `IF({roof_condition} < 3, 'Poor', IF({roof_condition} < 5, 'Fair', 'Goo
 - All referenced blockKeys validated against template version
 
 ### Formula builder UI
+
 - Expression input with syntax highlighting
 - Field picker: click `{...}` button to insert a field reference from a dropdown
 - Live preview: evaluates the formula with sample/default values
@@ -447,24 +506,28 @@ Example: `IF({roof_condition} < 3, 'Poor', IF({roof_condition} < 5, 'Fair', 'Goo
 ## 14. Security Requirements
 
 ### Server-side ownership
+
 - Every query and action checks `context.user` exists (401 if not)
 - Template operations: verify `template.userId === context.user.id`
-- Published versions: update/delete operations check `version.status !== 'Published'` and return 409 if published
+- Published versions: update/delete operations check `version.status !== 'PUBLISHED'` and return 409 if published
 - Block operations: verify the block's template version belongs to an owned template
 
 ### Configuration validation
+
 - Block config validated against the block registry's `configSchema` on every save
 - Client-provided type information is never trusted — server looks up registry by blockType
 - Validation errors returned as structured `{ field: string, message: string }[]`
 
 ### Snapshot integrity
+
 - Published version snapshot is generated server-side
 - Snapshot is never constructed from client-provided data
 - Historical snapshots are never modified
 
 ### Template immutability
+
 - Published versions cannot be edited or deleted through any operation
-- This is enforced at the database query level (update/delete WHERE status != 'Published')
+- This is enforced at the database query level (update/delete WHERE status != 'PUBLISHED')
 - UI hides edit controls for published versions, but server enforcement is the authority
 
 ---
