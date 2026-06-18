@@ -1,0 +1,24 @@
+# Dependencies and browser cache
+node_modules/
+.cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Generated spike artifacts. Keep compact curated evidence in evidence/ only.
+artifacts/assets/
+artifacts/html/
+artifacts/pdf/
+artifacts/screenshots/
+artifacts/metrics/
+artifacts/tmp/
+
+# TypeScript build output
+dist/
+*.tsbuildinfo
+
+.DS_Store

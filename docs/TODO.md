@@ -91,23 +91,50 @@
 
 ## Phase 3A0-B — PDF feasibility spike
 
-- [ ] Do not start until Phase 3A0-A pointer/manual browser verification is either completed or explicitly accepted as unresolved.
-- [ ] Standalone Node.js script created (spikes/pdf-render/)
-- [ ] A4 report generated with correct dimensions
-- [ ] 5000+ char paragraph paginates without clipping
-- [ ] Oversized block splits at sub-boundaries
-- [ ] 50-row table with repeating headers works
-- [ ] Headers and footers with page numbers work
-- [ ] Explicit page breaks work correctly
-- [ ] 1/2/4-column photo grids render correctly
-- [ ] 500+ char captions stay with photos
-- [ ] Portrait and landscape images render without distortion
-- [ ] 50+ photos in one report works (timing + memory measured)
-- [ ] Preview-versus-PDF comparison done
-- [ ] Deployment feasibility documented (binary size, memory, cold-start)
-- [ ] Deterministic local JPEG/PNG fixtures used (no remote images)
-- [ ] Playwright header/footer limitations tested
-- [ ] Findings documented in spikes/pdf-render/README.md
+- [x] Do not start until Phase 3A0-A pointer/manual browser verification is either completed or explicitly accepted as unresolved.
+- [x] Standalone Node.js script created (spikes/pdf-render/)
+- [x] Gate 1-only TypeScript spike scaffold created without `app/` changes
+- [x] 12 core fixture definitions implemented
+- [x] Deterministic local JPEG/PNG fixtures generated (no remote images)
+- [x] Fixture evidence model uses separate automated/manual/final statuses
+- [x] Manual review checklist generated at `spikes/pdf-render/artifacts/metrics/manual-review.md`
+- [x] Unexpected external HTTP/HTTPS request guard implemented
+- [x] PDF analysis split between `pdf-lib` page/dimension analysis and `pdfjs-dist` text extraction
+- [x] Deployment measurement command records browser cache/executable state
+- [x] Preserve Playwright 1.55.1 blocked run under `artifacts/metrics/runs/playwright-1.55.1-blocked/`
+- [x] Upgrade isolated spike dependency to `playwright@1.61.0`
+- [x] Clean failed spike-local browser cache before retry
+- [x] Playwright 1.61.0 Chromium browser installation succeeds in native WSL
+- [x] Chromium launch works in native WSL with Playwright 1.61.0
+- [x] Docker fallback proposal documented without execution
+- [x] Generated image files verified with filesystem/type inspection and Node-side `pngjs`/`jpeg-js` decoding
+- [x] Chromium fixture images repaired by embedding deterministic generated assets as `data:` URLs with stable `data-asset-id` attributes
+- [x] A4 report generated with correct automated PDF dimensions
+- [x] 5000+ char paragraph generated with start/middle/end text extraction markers
+- [x] Oversized unsplittable block handled with bounded diagnostic placeholder instead of silent clipping/spillover
+- [x] 50-row table generated with all 50 unique row markers extracted
+- [x] Headers and footers with page numbers generated across exactly 3 physical pages
+- [x] Explicit page breaks generated with expected minimum page count
+- [x] 1/2/4-column photo grids load embedded images with positive natural dimensions and successful `decode()`
+- [x] 500+ char captions generated for mixed-orientation photo fixture
+- [x] Portrait and landscape image source readiness verified before printing
+- [x] 50+ photos in one report generated with updated image-heavy timing, PDF size, page count, and memory diagnostics
+- [x] Preview-versus-PDF artifacts generated; DOM page estimate recorded only as heuristic
+- [x] Deployment feasibility measurements recorded separately from renderer approval
+- [x] Playwright header/footer behavior tested with extracted static header/footer and `Page 1 of 3`, `Page 2 of 3`, `Page 3 of 3`
+- [x] Findings documented in spikes/pdf-render/README.md
+- [x] User manually reviews Gate 1 core artifacts after browser rendering succeeds
+- [x] User confirms visual correctness for margins, clipping, repeated headers, photo placement/cropping/distortion, captions, page breaks, and preview-versus-PDF fidelity
+- [x] Phase 3A0-B Gate 1 functional feasibility marked MANUALLY VERIFIED PASS
+- [x] Playwright/Chromium approved as current PDF-rendering candidate for continued implementation and Gate 2 validation
+- [x] Core 05 duplicate header/footer caveat documented as technical feasibility only, not approved report design
+- [ ] Peak Chromium process-tree RSS measured reliably
+- [ ] Railway/container execution validated
+- [ ] Real infrastructure cold-start behavior validated
+- [ ] Concurrency and background-job behavior validated
+- [ ] Production header/footer strategy chosen
+- [ ] Production report styling designed and validated
+- [ ] Gate 2 extended fixtures started only after user manual approval of Gate 1
 
 ## Phase 3A — Platform architecture & schema foundation
 

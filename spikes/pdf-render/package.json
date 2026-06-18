@@ -1,0 +1,25 @@
+{
+  "name": "pdf-render-spike",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "generate:assets": "tsx src/cli.ts generate:assets",
+    "render:core": "tsx src/cli.ts render:core",
+    "measure:deployment": "tsx src/cli.ts measure:deployment",
+    "check": "tsc --noEmit && tsx src/cli.ts check"
+  },
+  "dependencies": {
+    "jpeg-js": "^0.4.4",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.394",
+    "playwright": "1.61.0",
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/pngjs": "^6.0.5",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

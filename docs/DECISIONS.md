@@ -63,3 +63,14 @@ Approve the Phase 3A0-A v5 sortable architecture as the drag-and-drop foundation
 
 Reason:
 Manual testing found reordering, cross-section movement, first/middle/final drops, and empty-section behavior smooth and reliable, with no bottom-jump behavior, missing blocks, or duplicated blocks. The visual layout differs substantially from the intended production builder, so production UI must be rebuilt later with the existing application's Tailwind/shadcn patterns and `docs/FORM_BUILDER_MASTER_SPEC.md`.
+
+## 2026-06-18 — Approve Playwright/Chromium as PDF engine candidate after Gate 1
+
+Decision:
+Approve Playwright/Chromium as the current PDF-rendering candidate for continued implementation and Phase 3A0-B Gate 2 validation after Gate 1 functional feasibility was manually verified PASS.
+
+Reason:
+Playwright/Chromium generated all 12 Gate 1 core PDF feasibility fixtures in native WSL after Linux browser dependencies were installed. User manual review found no unresolved functional rendering failure across deterministic images, long text, table headers, explicit page breaks, photo grids, the 52-photo stress fixture, bounded oversized-block diagnostics, and preview/PDF material consistency.
+
+Limits:
+This does not approve the complete production renderer, final report design, Railway/container deployment suitability, memory requirements, concurrency behavior, or background-job behavior. Gate 2 extended fixtures and deployment validation remain pending. Production must choose one header/footer strategy; the Gate 1 Core 05 fixture intentionally combined CSS/static and Playwright-template header/footer approaches for technical feasibility and produced duplicate visual elements.
