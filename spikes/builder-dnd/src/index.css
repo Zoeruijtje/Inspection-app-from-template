@@ -146,7 +146,7 @@ textarea {
 
 .v5-list {
   display: flex;
-  min-height: 440px;
+  min-height: 280px;
   flex-direction: column;
   gap: 10px;
   padding: 14px;
@@ -154,13 +154,60 @@ textarea {
 
 .v5-empty {
   display: grid;
-  min-height: 180px;
+  min-height: 150px;
   place-items: center;
   border: 2px dashed #b7c1d1;
   border-radius: 8px;
   color: var(--muted);
   background: #f9fafb;
   font-weight: 600;
+}
+
+.v5-group {
+  margin: 0 14px 14px;
+  border: 2px dashed #98a2b3;
+  border-radius: 8px;
+  background: #fcfcfd;
+}
+
+.v5-group-target {
+  border-color: var(--green);
+  background: var(--green-soft);
+}
+
+.v5-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.v5-group-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.v5-group-header p {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.v5-group-list {
+  display: flex;
+  min-height: 180px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+}
+
+.v5-empty-group {
+  min-height: 130px;
+  border-color: #667085;
+  background: #eef2f7;
+  color: #344054;
 }
 
 .v5-card {

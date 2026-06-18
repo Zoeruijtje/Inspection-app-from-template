@@ -9,17 +9,42 @@
 - Agent documentation being added and synchronized with the current codebase.
 - Codebase audit completed from local files only on 2026-06-16.
 - Master planning phase completed on 2026-06-17. Product redefined around generic form builder platform.
-- Phase 3A0-A v5 Stage A manual pointer validation passed; sortable architecture approved as DnD foundation.
+- Phase 3A0-A v5 Stage B nested group manual pointer validation passed; Stage B is MANUALLY VERIFIED PASS.
 
 ## Next milestone
 
-Phase 3A0-A v5 Stage B — validate nested group sortable behavior in the isolated spike.
+Next explicitly requested phase. Phase 3A0-A v5 Stage C support behavior remains deferred, and Phase 3A0-B PDF has not started.
 
 ## In progress
 
-- Phase 3A0-A v5: Stage A pointer behavior verified; Stage B nested group validation is next. Do not start the PDF spike yet.
+- No active implementation phase. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
 
 ## Completed
+
+- Phase 3A0-A v5 Stage B nested group implementation completed 2026-06-18.
+
+- Added one fixed nested group, `group-a1`, inside Section A in `spikes/builder-dnd/`.
+- Extended the sortable state from two section arrays to one controlled `Record<ContainerId, string[]>` with stable keys `section-a`, `section-b`, and `group-a1`.
+- Preserved the Stage A `DragDropProvider` + `useSortable` + `useDroppable` + `move(items, event)` architecture.
+- Blocks inside the group use the same compatible sortable architecture as section blocks.
+- The group container itself was not made draggable or reorderable.
+- Collision priority is item-first: section containers use priority `1`, the nested group container uses priority `2`, and sortable block items use priority `4`.
+- Empty group state has a visible dashed drop area.
+- Cancel handling still restores the exact pre-drag state snapshot when dnd-kit reports a canceled drag.
+- Checks run: `npx tsc --noEmit` passed; `npm run build` passed; `git diff --check` passed; `make check` passed; `git diff -- app` produced no output.
+- Browser interaction was not genuinely performed during the implementation pass; user manual validation was completed afterward and is recorded below.
+- Touch remains UNVERIFIED.
+- No `app/`, schema, migration, environment, deployment, or package files outside the spike were modified.
+
+- Phase 3A0-A v5 Stage B manual pointer validation completed 2026-06-18.
+
+- User manual testing completed 10 consecutive correct attempts for all Stage B operations and all Stage A regression operations.
+- Verified Stage B operations: Section A → group, Section B → group, group → Section A, group → Section B, reorder within group, insert first/middle/last in group, drop into empty group, and cancel cross-container drag with exact pre-drag state restoration.
+- Verified Stage A regressions still work: reorder within Section A, reorder within Section B, Section A → Section B, Section B → Section A, first/middle/final insertion, and empty-section drop.
+- No wrong destinations, wrong insertion positions, duplicate blocks, disappearing blocks, bottom jumps, or preview/final-position mismatches were observed.
+- Stage B status: MANUALLY VERIFIED PASS.
+- Touch remains UNVERIFIED.
+- Dragging or reordering the group container itself remains outside the Stage B validated scope.
 
 - Phase 3A0-A v5 Stage A manual pointer validation completed 2026-06-17.
 

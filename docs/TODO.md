@@ -62,10 +62,23 @@
 - [x] Stage A move B → A passes manual attempts
 - [x] Stage A insert at first/middle/last positions passes manual attempts
 - [x] Stage A move into empty section passes manual attempts
-- [ ] Stage B nested group added only after Stage A is manually stable
-- [ ] Cross-container drag-and-drop works
-- [ ] Mouse interaction works (drag preview, insertion indicator) — v5 manual browser acceptance still required
+- [x] Stage B nested group added only after Stage A is manually stable
+- [x] Stage B state model uses stable ordered containers: `section-a`, `section-b`, `group-a1`
+- [x] Stage B group container remains non-draggable/non-reorderable
+- [x] Stage B empty group has a visibly clear drop area
+- [x] Stage B manual pointer validation: Section A → group, 10 consecutive correct attempts
+- [x] Stage B manual pointer validation: Section B → group, 10 consecutive correct attempts
+- [x] Stage B manual pointer validation: group → Section A, 10 consecutive correct attempts
+- [x] Stage B manual pointer validation: group → Section B, 10 consecutive correct attempts
+- [x] Stage B manual pointer validation: reorder within group, 10 consecutive correct attempts
+- [x] Stage B manual pointer validation: insert first/middle/last in group, 10 consecutive correct attempts each
+- [x] Stage B manual pointer validation: drop into empty group, 10 consecutive correct attempts
+- [x] Stage B manual pointer validation: cancel cross-container drag restores exact pre-drag state, 10 consecutive correct attempts
+- [x] Stage B manual pointer validation: Stage A regression operations still pass 10 consecutive correct attempts each
+- [x] Cross-container drag-and-drop works for Stage A and Stage B block moves
+- [x] Mouse/pointer interaction works for Stage A and Stage B validated scope
 - [ ] Touch interaction works (tablet viewport)
+- [ ] Group-container dragging/reordering works — outside Stage B validated scope
 - [ ] Keyboard interaction works (Tab/Arrow/Space/Enter) — cross-container browser verification after fresh restart still required
 - [ ] Move-to operation verified in browser, including counts, exact position, undo, and redo
 - [ ] Auto-scroll works near canvas edges during an actual active pointer drag

@@ -1,40 +1,80 @@
-# Next Prompt — Phase 3A0-A v5 Stage B Nested Group Test
+# Next Prompt — After Phase 3A0-A v5 Stage B Pass
 
-Continue Phase 3A0-A. Do not start the PDF spike yet.
+Continue in:
 
-Stage A manual pointer validation has passed. The v5 sortable architecture is approved as the drag-and-drop foundation, but the standalone Vite prototype visuals are not approved as final product design.
+```text
+~/dev/inspection-app
+```
 
-Important design rule:
+Use Agent mode.
 
-- Do not treat the standalone Vite layout, styling, spacing, colors, or panel structure as a production visual reference.
-- Production builder UI must later be rebuilt using the existing application's Tailwind/shadcn patterns, `docs/UI_RULES.md`, and `docs/FORM_BUILDER_MASTER_SPEC.md`.
+## Current validated baseline
 
-Next isolated spike step: Stage B nested group.
+Phase 3A0-A v5 Stage B is MANUALLY VERIFIED PASS.
 
-Implement and manually verify:
+User manual testing completed 10 consecutive correct attempts for all Stage B operations and all Stage A regression operations.
 
-- Add one group inside Section A.
-- The group participates as a compatible sortable container.
-- Move section → group.
-- Move group → section.
-- Move group → other section.
-- Verify exact position after each drop.
+Observed result:
 
-Rules:
+- No wrong destinations.
+- No wrong insertion positions.
+- No duplicated blocks.
+- No disappearing blocks.
+- No bottom jumps.
+- No preview/final-position mismatches.
 
-- Keep this inside `spikes/builder-dnd/`.
-- Do not modify `app/`.
-- Do not create migrations.
-- Do not start Phase 3A0-B PDF.
-- Keep touch `UNVERIFIED` unless genuine touch emulation or a real touch device is available.
-- Keep visual caveats explicit: DnD architecture can pass while prototype design remains spike-only.
+## Validated Stage B scope
 
-After Stage B testing, update:
+The isolated spike at `spikes/builder-dnd/` validates:
 
-- `spikes/builder-dnd/README.md`
-- `docs/PROGRESS_LOG.md`
-- `docs/TODO.md`
-- `docs/DECISIONS.md`, if a new decision is made
-- `docs/NEXT_PROMPT.md`
+- stable container ids `section-a`, `section-b`, and `group-a1`;
+- one controlled `Record<ContainerId, string[]>` sortable state model;
+- one fixed nested group, `group-a1`, inside Section A;
+- Section A → group;
+- Section B → group;
+- group → Section A;
+- group → Section B;
+- reorder within group;
+- insert first/middle/last in group;
+- drop into empty group;
+- cancel cross-container drag with exact pre-drag state restoration;
+- all Stage A regression operations.
 
-Run relevant checks and do not commit automatically.
+## Still outside validated scope
+
+- Touch remains UNVERIFIED.
+- Dragging or reordering the group container itself remains outside Stage B validated scope.
+- Stage C support behavior remains deferred.
+- Phase 3A0-B PDF has not started.
+- The standalone Vite visuals remain spike-only and are not a production UI reference.
+
+## Architecture note
+
+The approved sortable foundation remains:
+
+- `@dnd-kit/react`;
+- `@dnd-kit/helpers`;
+- `DragDropProvider`;
+- `useSortable`;
+- compatible sortable groups;
+- container-level droppable targets with lower collision priority than sortable block targets;
+- controlled React state updated with `move(items, event)` during `onDragOver`;
+- restoration of the pre-drag state when a drag is cancelled.
+
+For Stage B specifically, collision priority is:
+
+- Section containers: `1`;
+- nested group container: `2`;
+- sortable block items: `4`.
+
+Do not rewrite this architecture without a specific documented technical reason.
+
+## Possible next steps
+
+Pick the next phase explicitly before editing code:
+
+- Stage C support behavior: drag overlay polish, accessible Move-to fallback, keyboard movement, undo/redo acceptance evidence, and auto-scroll during real active pointer drag.
+- Touch validation: real touch device or genuine browser touch emulation that exercises touch events.
+- Phase 3A0-B PDF spike, if the user chooses to move on from builder DnD validation.
+
+Keep production builder UI work separate. Future production UI must use the existing app's Tailwind/shadcn patterns plus `docs/UI_RULES.md` and `docs/FORM_BUILDER_MASTER_SPEC.md`.

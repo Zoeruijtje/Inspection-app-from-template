@@ -1,4 +1,4 @@
-// Phase 3A0-A v5 — Stage A sortable rewrite.
+// Phase 3A0-A v5 — Stage B nested group extension.
 //
 // This intentionally replaces the v4 custom drop-slot pointer algorithm with
 // the current @dnd-kit/react sortable primitives and @dnd-kit/helpers move().
@@ -16,6 +16,8 @@ import { PointerActivationConstraints } from '@dnd-kit/dom';
 import { move } from '@dnd-kit/helpers';
 
 type SectionId = 'section-a' | 'section-b';
+type GroupId = 'group-a1';
+type ContainerId = SectionId | GroupId;
 
 interface StageBlock {
   id: string;
@@ -29,12 +31,28 @@ interface StageSection {
   note: string;
 }
 
-type SortableItems = Record<SectionId, string[]>;
+interface StageGroup {
+  id: GroupId;
+  title: string;
+  note: string;
+  parentSectionId: SectionId;
+}
+
+type SortableItems = Record<ContainerId, string[]>;
 
 const SECTIONS: StageSection[] = [
-  { id: 'section-a', title: 'Section A', note: 'Starts with 5 blocks' },
+  { id: 'section-a', title: 'Section A', note: 'Starts with 5 blocks and fixed Group A1' },
   { id: 'section-b', title: 'Section B', note: 'Starts with 3 blocks' },
 ];
+
+const GROUP_A1: StageGroup = {
+  id: 'group-a1',
+  title: 'Group A1',
+  note: 'Fixed nested destination inside Section A',
+  parentSectionId: 'section-a',
+};
+
+const CONTAINER_IDS: ContainerId[] = ['section-a', 'section-b', 'group-a1'];
 
 const BLOCKS: Record<string, StageBlock> = {
   'a-1': { id: 'a-1', label: 'Client name', kind: 'Short Text' },
@@ -50,6 +68,7 @@ const BLOCKS: Record<string, StageBlock> = {
 const INITIAL_ITEMS: SortableItems = {
   'section-a': ['a-1', 'a-2', 'a-3', 'a-4', 'a-5'],
   'section-b': ['b-1', 'b-2', 'b-3'],
+  'group-a1': [],
 };
 
 const pointerSensors = [
@@ -62,22 +81,18 @@ const pointerSensors = [
 ];
 
 function cloneItems(items: SortableItems): SortableItems {
-  return {
-    'section-a': [...items['section-a']],
-    'section-b': [...items['section-b']],
-  };
+  return Object.fromEntries(
+    CONTAINER_IDS.map(containerId => [containerId, [...items[containerId]]]),
+  ) as SortableItems;
 }
 
 function sameItems(a: SortableItems, b: SortableItems): boolean {
-  return (
-    a['section-a'].join('|') === b['section-a'].join('|') &&
-    a['section-b'].join('|') === b['section-b'].join('|')
-  );
+  return CONTAINER_IDS.every(containerId => a[containerId].join('|') === b[containerId].join('|'));
 }
 
-function findBlockSection(items: SortableItems, blockId: string): SectionId | null {
-  for (const section of SECTIONS) {
-    if (items[section.id].includes(blockId)) return section.id;
+function findBlockContainer(items: SortableItems, blockId: string): ContainerId | null {
+  for (const containerId of CONTAINER_IDS) {
+    if (items[containerId].includes(blockId)) return containerId;
   }
   return null;
 }
@@ -90,11 +105,11 @@ export function BuilderCanvas() {
 
   const orderedBlocks = useMemo(() => {
     return Object.fromEntries(
-      SECTIONS.map(section => [
-        section.id,
-        items[section.id].map(blockId => BLOCKS[blockId]).filter(Boolean),
+      CONTAINER_IDS.map(containerId => [
+        containerId,
+        items[containerId].map(blockId => BLOCKS[blockId]).filter(Boolean),
       ]),
-    ) as Record<SectionId, StageBlock[]>;
+    ) as Record<ContainerId, StageBlock[]>;
   }, [items]);
 
   const handleDragStart = useCallback((event: any) => {
@@ -122,8 +137,8 @@ export function BuilderCanvas() {
         return sameItems(current, next) ? current : cloneItems(next);
       });
       const sourceId = String(event.operation.source?.id ?? '');
-      const section = sourceId ? findBlockSection(items, sourceId) : null;
-      setLastMove(section ? `Dropped ${sourceId} in ${section}` : 'Dropped');
+      const container = sourceId ? findBlockContainer(items, sourceId) : null;
+      setLastMove(container ? `Dropped ${sourceId} in ${container}` : 'Dropped');
     }
     setActiveBlockId(null);
     preDragItemsRef.current = null;
@@ -132,7 +147,7 @@ export function BuilderCanvas() {
   const resetStage = useCallback(() => {
     setItems(cloneItems(INITIAL_ITEMS));
     setActiveBlockId(null);
-    setLastMove('Reset to Stage A seed data');
+    setLastMove('Reset to Stage B seed data');
     preDragItemsRef.current = null;
   }, []);
 
@@ -149,16 +164,17 @@ export function BuilderCanvas() {
         <header className="v5-toolbar">
           <div>
             <p className="v5-kicker">Phase 3A0-A v5</p>
-            <h1>Stage A sortable lists</h1>
+            <h1>Stage B nested group</h1>
           </div>
           <button className="v5-button" type="button" onClick={resetStage}>
-            Reset Stage A
+            Reset Stage B
           </button>
         </header>
 
         <section className="v5-status" aria-live="polite">
-          <strong>Pointer core:</strong> official `useSortable` items, section `useDroppable` targets,
-          and `move(items, event)` in `onDragOver`. {lastMove}.
+          <strong>Pointer core:</strong> official `useSortable` items, section/group
+          `useDroppable` targets, and `move(items, event)` in `onDragOver`.
+          State containers: section-a, section-b, group-a1. {lastMove}.
         </section>
 
         <div className="v5-board">
@@ -167,18 +183,21 @@ export function BuilderCanvas() {
               key={section.id}
               section={section}
               blocks={orderedBlocks[section.id]}
+              group={section.id === GROUP_A1.parentSectionId ? GROUP_A1 : null}
+              groupBlocks={section.id === GROUP_A1.parentSectionId ? orderedBlocks[GROUP_A1.id] : []}
             />
           ))}
         </div>
 
-        <section className="v5-checklist" aria-label="Manual Stage A checklist">
+        <section className="v5-checklist" aria-label="Manual Stage B checklist">
           <h2>Manual 10-attempt checklist</h2>
           <ul>
-            <li>Reorder within Section A.</li>
-            <li>Reorder within Section B.</li>
-            <li>Move A to B and B to A.</li>
-            <li>Insert at first, middle, and last position.</li>
-            <li>Move all blocks out of a section, then drop into the empty section.</li>
+            <li>Move Section A to group and Section B to group.</li>
+            <li>Move group to Section A and group to Section B.</li>
+            <li>Reorder within group; insert first, middle, and last in group.</li>
+            <li>Move all blocks out of the group, then drop into the empty group.</li>
+            <li>Cancel an active cross-container drag and confirm state is restored.</li>
+            <li>Repeat Stage A regressions: section reorder, A to B, B to A, empty-section drop.</li>
           </ul>
         </section>
       </main>
@@ -190,13 +209,23 @@ export function BuilderCanvas() {
   );
 }
 
-function SortableSection({ section, blocks }: { section: StageSection; blocks: StageBlock[] }) {
+function SortableSection({
+  section,
+  blocks,
+  group,
+  groupBlocks,
+}: {
+  section: StageSection;
+  blocks: StageBlock[];
+  group: StageGroup | null;
+  groupBlocks: StageBlock[];
+}) {
   const { ref, isDropTarget } = useDroppable({
     id: section.id,
     type: 'stage-section',
     accept: 'stage-block',
     collisionPriority: 1,
-    data: { sectionId: section.id, kind: 'section-container' },
+    data: { containerId: section.id, kind: 'section-container' },
   });
 
   return (
@@ -215,7 +244,7 @@ function SortableSection({ section, blocks }: { section: StageSection; blocks: S
         <span className="v5-count">{blocks.length}</span>
       </div>
 
-      <div className="v5-list" role="list">
+      <div className="v5-list" role="list" aria-label={`${section.title} direct blocks`}>
         {blocks.length === 0 ? (
           <div className="v5-empty">Drop here when this section is empty</div>
         ) : (
@@ -223,7 +252,52 @@ function SortableSection({ section, blocks }: { section: StageSection; blocks: S
             <SortableBlock
               key={block.id}
               block={block}
-              sectionId={section.id}
+              containerId={section.id}
+              index={index}
+            />
+          ))
+        )}
+      </div>
+
+      {group ? <SortableGroup group={group} blocks={groupBlocks} /> : null}
+    </section>
+  );
+}
+
+function SortableGroup({ group, blocks }: { group: StageGroup; blocks: StageBlock[] }) {
+  const { ref, isDropTarget } = useDroppable({
+    id: group.id,
+    type: 'stage-group',
+    accept: 'stage-block',
+    collisionPriority: 2,
+    data: { containerId: group.id, parentSectionId: group.parentSectionId, kind: 'group-container' },
+  });
+
+  return (
+    <section
+      ref={ref}
+      className={`v5-group ${isDropTarget ? 'v5-group-target' : ''}`}
+      data-group-id={group.id}
+      data-block-count={blocks.length}
+      aria-label={`${group.title}, ${blocks.length} blocks`}
+    >
+      <div className="v5-group-header">
+        <div>
+          <h3>{group.title}</h3>
+          <p>{group.note}</p>
+        </div>
+        <span className="v5-count">{blocks.length}</span>
+      </div>
+
+      <div className="v5-group-list" role="list" aria-label={`${group.title} blocks`}>
+        {blocks.length === 0 ? (
+          <div className="v5-empty v5-empty-group">Drop here when this group is empty</div>
+        ) : (
+          blocks.map((block, index) => (
+            <SortableBlock
+              key={block.id}
+              block={block}
+              containerId={group.id}
               index={index}
             />
           ))
@@ -235,23 +309,23 @@ function SortableSection({ section, blocks }: { section: StageSection; blocks: S
 
 function SortableBlock({
   block,
-  sectionId,
+  containerId,
   index,
 }: {
   block: StageBlock;
-  sectionId: SectionId;
+  containerId: ContainerId;
   index: number;
 }) {
   const { ref, isDragging, isDragSource, isDropTarget } = useSortable({
     id: block.id,
     type: 'stage-block',
     accept: 'stage-block',
-    group: sectionId,
+    group: containerId,
     index,
-    collisionPriority: 3,
+    collisionPriority: 4,
     data: {
       blockId: block.id,
-      sectionId,
+      containerId,
       kind: 'block-item',
     },
   });
@@ -266,7 +340,7 @@ function SortableBlock({
         isDropTarget ? 'v5-card-target' : '',
       ].filter(Boolean).join(' ')}
       data-block-id={block.id}
-      data-section-id={sectionId}
+      data-container-id={containerId}
       data-block-index={index}
       role="listitem"
       tabIndex={0}
