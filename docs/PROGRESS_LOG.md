@@ -19,16 +19,32 @@
 - Phase 3A-4C1 authenticated baseline block CRUD, registry validation, immutable stable keys, block/container compatibility, and source/destination block ordering normalization are implemented.
 - Phase 3A-4C2A option capability contract, registry declarations, pure capability helpers, and database-enforced per-block option-value uniqueness are implemented.
 - Phase 3A-4C2B option CRUD, capability enforcement, duplicate-value handling, contiguous ordering, contextual default validation, and atomic default maintenance are implemented.
+- Phase 3A-4D3 authenticated create-draft-from-version operation with source snapshot integrity verification and deep definition cloning is implemented.
 
 ## Next milestone
 
-Phase 3A-4D or Phase 3A-4E — Whole-draft definition validation, version cloning, publish transaction, canonical snapshot creation, snapshot hashing, and published-version immutability verification. Do not start builder UI, drag-and-drop, runtime execution, reports, or PDF work outside these backend foundation checkpoints.
+Phase 3A-4E — version history/query hardening and lifecycle cleanup around draft creation, published immutability surfacing, and template-management backend readiness. Do not start builder UI, drag-and-drop, runtime execution, reports, or PDF work outside these backend foundation checkpoints.
 
 ## In progress
 
 - None.
 
 ## Completed
+
+- Phase 3A-4D3 create draft from published or superseded version completed 2026-06-29.
+
+- Implemented authenticated Wasp action `createDraftFromVersion` with strict Zod input (`sourceVersionId` UUID, unknown-property rejection) and operation-level `auth: true`.
+- Ownership is resolved inside one `RepeatableRead` transaction through existing definition authorization helpers. Unauthenticated access returns 401 before transaction; missing/unowned source returns 404; archived template returns 409; only `PUBLISHED` and `SUPERSEDED` source versions are accepted via positive allowlist with stable code `FORM_TEMPLATE_SOURCE_VERSION_NOT_CLONABLE`.
+- Before any clone writes, the source definition is loaded through `loadDefinitionRows(tx, sourceVersion.id)`, validated with `validateVersionDefinition`, converted to canonical snapshot V1, and hashed with SHA-256. The source must have non-null snapshot metadata, `snapshotSchemaVersion === 1`, non-null `snapshotHash`, and an exact match to the calculated hash. Invalid source structure or hash divergence returns HTTP 409 with code `FORM_TEMPLATE_SOURCE_VERSION_INTEGRITY_INVALID`, sorted validation issues, and counts; the full snapshot is never exposed.
+- Enforced the one-draft-per-template invariant with a tx-scoped pre-check returning HTTP 409 code `FORM_TEMPLATE_DRAFT_ALREADY_EXISTS` and `existingDraftVersionId`, plus targeted Prisma `P2002` handling for the partial unique index `FormTemplateVersion_one_draft_per_template`.
+- Allocates new draft version number from transaction-scoped `max(versionNumber) + 1`, treats null aggregate results or non-increasing version numbers as integrity conflicts, and maps targeted `templateId + versionNumber` `P2002` races to HTTP 409.
+- Created pure `buildVersionClonePlan` helper that injects an ID generator for deterministic tests, generates fresh UUID mappings for pages, containers, blocks, and options, rejects source-ID reuse and duplicate generated IDs, preserves block stable keys, preserves intended row data, rewires old-ID to new-ID references, and batches containers by parent depth for self-referential FK-safe insertion.
+- The action creates a fresh `DRAFT` version with no publication metadata, inserts cloned pages, container batches, blocks, and options in FK-safe order, verifies every `createMany.count`, and returns only a safe DTO (`versionId`, `templateId`, `versionNumber`, `status: DRAFT`, `sourceVersionId`, counts). No user IDs, raw Prisma relations, mappings, snapshots, or internal objects are returned.
+- Added Wasp spec `createDraftOperations.wasp.ts` with all six form-template entities and registered it in `app/main.wasp.ts`.
+- Added focused Vitest coverage for clone-plan mapping/fresh IDs/FK rewiring/data preservation and create-draft input/auth/lifecycle/source-integrity/existing-draft/version-number/deep-clone/result DTO/transaction/tx-only/P2034/P2002/error propagation behavior.
+- Checks run: form-template Vitest passed (434 tests), registry Vitest passed (38 tests), `git diff --check` passed, `make check` passed, `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no scripts present, `npx prisma validate` initially failed because `DATABASE_URL` was unset in the shell, then passed with a placeholder local URL and also passed through `make check`.
+- `wasp start` compiled the Wasp project and built the SDK successfully. Full database-connected startup remains blocked locally: Wasp cannot connect to a database, and `wasp db start`/`wasp start db` cannot launch the managed dev database because port 5432 is already in use. `ss -ltnp` confirms a listener on `*:5432`, but the process is not visible from this environment.
+- Restricted diff remains empty for schema, migrations, package.json, registries, clients, properties, inspections, and spikes. No schema, migration, registry, UI, runtime, report, PDF, package, or provider changes were made.
 
 - Phase 3A-4D2 publish transaction with snapshot persistence and superseding completed 2026-06-29.
 
