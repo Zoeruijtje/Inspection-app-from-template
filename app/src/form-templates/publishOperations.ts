@@ -206,12 +206,6 @@ export const publishFormTemplateVersion: PublishFormTemplateVersion<
         const serializedSnapshot = serializeCanonicalSnapshot(snapshot);
         const snapshotHash = hashCanonicalSnapshot(snapshot);
 
-        // Verify hash consistency
-        const verifyHash = hashCanonicalSnapshot(snapshot);
-        if (snapshotHash !== verifyHash) {
-          throw new HttpError(500, "Snapshot hash verification failed.");
-        }
-
         // Persist as JSON object, not string
         const snapshotJson = JSON.parse(serializedSnapshot) as Prisma.InputJsonValue;
 
@@ -308,6 +302,7 @@ export const publishFormTemplateVersion: PublishFormTemplateVersion<
             versionNumber: true,
             status: true,
             publishedAt: true,
+            snapshot: true,
             snapshotSchemaVersion: true,
             snapshotHash: true,
           },
@@ -315,11 +310,14 @@ export const publishFormTemplateVersion: PublishFormTemplateVersion<
 
         if (
           !confirmedVersion ||
+          confirmedVersion.id !== version.id ||
+          confirmedVersion.versionNumber !== version.versionNumber ||
           confirmedVersion.status !== FormTemplateVersionStatus.PUBLISHED ||
           confirmedVersion.publishedAt === null ||
+          confirmedVersion.publishedAt.getTime() !== publishedAt.getTime() ||
+          confirmedVersion.snapshot === null ||
           confirmedVersion.snapshotSchemaVersion !== 1 ||
-          !confirmedVersion.snapshotHash ||
-          !/^[0-9a-f]{64}$/.test(confirmedVersion.snapshotHash)
+          confirmedVersion.snapshotHash !== snapshotHash
         ) {
           throw new HttpError(
             409,

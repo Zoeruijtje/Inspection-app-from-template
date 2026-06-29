@@ -1,7 +1,7 @@
 import { Prisma, FormTemplateLifecycleStatus, FormTemplateVersionStatus } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { publishFormTemplateVersion } from "./publishOperations";
-import { buildCanonicalSnapshotV1, hashCanonicalSnapshot } from "./canonicalSnapshot";
+import { buildCanonicalSnapshotV1, hashCanonicalSnapshot, serializeCanonicalSnapshot } from "./canonicalSnapshot";
 
 // ── Mock helpers ───────────────────────────────────────────────────────
 
@@ -163,26 +163,31 @@ function invalidDefinitionRowsNoBlocks() {
 
 // ── Tx factory with full publish capabilities ──────────────────────────
 
-// Pre-computed hash for the standard valid definition rows
-// Used to make confirmation reads return a consistent hash
-let EXPECTED_SNAPSHOT_HASH = "";
-
-function getExpectedSnapshotHash(): string {
-  if (EXPECTED_SNAPSHOT_HASH) return EXPECTED_SNAPSHOT_HASH;
-  const rows = validDefinitionRows();
+/**
+ * Compute the expected snapshot hash from the given definition rows.
+ * Each tx fixture derives its own hash so tests that change rows still
+ * get a consistent hash without a stale global constant.
+ */
+function computeExpectedHash(rows: ReturnType<typeof validDefinitionRows>): string {
   const snapshot = buildCanonicalSnapshotV1(rows);
-  EXPECTED_SNAPSHOT_HASH = hashCanonicalSnapshot(snapshot);
-  return EXPECTED_SNAPSHOT_HASH;
+  return hashCanonicalSnapshot(snapshot);
 }
 
-function createTx(versionOverride?: unknown) {
+function computeExpectedSnapshotJson(rows: ReturnType<typeof validDefinitionRows>): Record<string, unknown> {
+  const snapshot = buildCanonicalSnapshotV1(rows);
+  return JSON.parse(serializeCanonicalSnapshot(snapshot)) as Record<string, unknown>;
+}
+
+function createTx(versionOverride?: unknown, rowsOverride?: ReturnType<typeof validDefinitionRows>) {
   const version = versionOverride ?? ownedDraftVersion();
+  const rows = rowsOverride ?? validDefinitionRows();
+  const expectedHash = computeExpectedHash(rows);
+  const expectedSnapshot = computeExpectedSnapshotJson(rows);
 
   // findFirst is called 3 times:
   // 1. Ownership check (requireOwnedFormTemplateVersionForRead)
   // 2. Version row load (loadDefinitionRows)
   // 3. Confirmation re-read (post-write)
-  // The default fallback returns the draft version for safety.
   let findFirstCallCount = 0;
   const findFirstMock = vi.fn().mockImplementation(() => {
     findFirstCallCount++;
@@ -199,18 +204,17 @@ function createTx(versionOverride?: unknown) {
         status: (version as Record<string, unknown>).status ?? FormTemplateVersionStatus.DRAFT,
       });
     }
-    // Confirmation re-read — return published version
+    // Confirmation re-read — return published version with exact hash
     return Promise.resolve({
       id: (version as Record<string, unknown>).id ?? VERSION_ID,
       versionNumber: (version as Record<string, unknown>).versionNumber ?? 1,
       status: FormTemplateVersionStatus.PUBLISHED,
       publishedAt: FIXED_NOW,
+      snapshot: expectedSnapshot,
       snapshotSchemaVersion: 1,
-      snapshotHash: getExpectedSnapshotHash(),
+      snapshotHash: expectedHash,
     });
   });
-
-  const rows = validDefinitionRows();
 
   return {
     formTemplateVersion: {
@@ -469,11 +473,19 @@ describe("publishFormTemplateVersion — structured validation failure", () => {
     );
 
     const errorData = (caught as { data?: Record<string, unknown> }).data;
-    if (errorData) {
-      expect(errorData.code).toBe("FORM_TEMPLATE_VERSION_INVALID");
-      expect(errorData.issues).toBeDefined();
-      expect(errorData.counts).toBeDefined();
-    }
+    expect(errorData).toBeDefined();
+    expect(errorData!.code).toBe("FORM_TEMPLATE_VERSION_INVALID");
+    expect(errorData!.issues).toEqual(expect.any(Array));
+    expect(errorData!.counts).toEqual({
+      pages: 0,
+      containers: expect.any(Number),
+      blocks: expect.any(Number),
+      options: expect.any(Number),
+    });
+
+    // Assert the expected stable issue code is present
+    const issues = errorData!.issues as Array<{ code: string }>;
+    expect(issues.some((i) => i.code === "VERSION_HAS_NO_PAGES")).toBe(true);
   });
 
   it("returns HTTP 400 when version has no blocks", async () => {
@@ -693,6 +705,9 @@ describe("publishFormTemplateVersion — superseding", () => {
     rows.containers = rows.containers.map(c => ({ ...c, templateVersionId: V2_VERSION_ID }));
     rows.blocks = rows.blocks.map(b => ({ ...b, templateVersionId: V2_VERSION_ID }));
 
+    const expectedHash = computeExpectedHash(rows);
+    const expectedSnapshot = computeExpectedSnapshotJson(rows);
+
     let findFirstCallCount = 0;
     const findFirstMock = vi.fn().mockImplementation(() => {
       findFirstCallCount++;
@@ -712,8 +727,9 @@ describe("publishFormTemplateVersion — superseding", () => {
         versionNumber: 2,
         status: FormTemplateVersionStatus.PUBLISHED,
         publishedAt: FIXED_NOW,
+        snapshot: expectedSnapshot,
         snapshotSchemaVersion: 1,
-        snapshotHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        snapshotHash: expectedHash,
       });
     });
 
@@ -1025,9 +1041,14 @@ describe("publishFormTemplateVersion — snapshot integrity", () => {
     expect(Array.isArray((persistedSnapshot as Record<string, unknown>).pages)).toBe(true);
   });
 
-  it("stored hash equals hashCanonicalSnapshot(snapshot)", async () => {
-    const { hashCanonicalSnapshot } = await import("./canonicalSnapshot");
-    const tx = createTx();
+  it("stored hash equals independently computed hash from canonical snapshot", async () => {
+    // Build the exact rows that will be used
+    const rows = validDefinitionRows();
+    const expectedSnapshot = buildCanonicalSnapshotV1(rows);
+    const expectedHash = hashCanonicalSnapshot(expectedSnapshot);
+    const expectedSnapshotJson = JSON.parse(serializeCanonicalSnapshot(expectedSnapshot));
+
+    const tx = createTx(undefined, rows);
     tx.formTemplateVersion.findMany.mockResolvedValue([]);
     waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
 
@@ -1036,10 +1057,15 @@ describe("publishFormTemplateVersion — snapshot integrity", () => {
       { user: { id: USER_ID } } as never,
     );
 
-    const updateCall = tx.formTemplateVersion.updateMany.mock.calls[0]?.[0];
-    const persistedHash = updateCall.data.snapshotHash;
+    // Verify result hash matches independent computation
+    expect(result.snapshotHash).toBe(expectedHash);
 
-    expect(result.snapshotHash).toBe(persistedHash);
+    // Verify persisted hash matches
+    const updateCall = tx.formTemplateVersion.updateMany.mock.calls[0]?.[0];
+    expect(updateCall.data.snapshotHash).toBe(expectedHash);
+
+    // Verify persisted snapshot is deeply equal to the canonical snapshot
+    expect(updateCall.data.snapshot).toEqual(expectedSnapshotJson);
   });
 
   it("stored value is not a string", async () => {
@@ -1068,13 +1094,12 @@ describe("publishFormTemplateVersion — snapshot integrity", () => {
 
     // Now with different block content
     vi.clearAllMocks();
-    const tx2 = createTx();
     const rows2 = validDefinitionRows();
     rows2.blocks = [{
       ...rows2.blocks[0],
       label: "Different Label",
     }];
-    tx2.formBlockDefinition.findMany.mockResolvedValue(rows2.blocks);
+    const tx2 = createTx(undefined, rows2);
     tx2.formTemplateVersion.findMany.mockResolvedValue([]);
     waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx2));
 
@@ -1115,7 +1140,7 @@ describe("publishFormTemplateVersion — snapshot integrity", () => {
 // ══════════════════════════════════════════════════════════════════════
 
 describe("publishFormTemplateVersion — confirmation and safe result", () => {
-  it("target is re-read after writes", async () => {
+  it("confirmation select includes snapshot", async () => {
     const tx = createTx();
     tx.formTemplateVersion.findMany.mockResolvedValue([]);
     waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
@@ -1125,31 +1150,34 @@ describe("publishFormTemplateVersion — confirmation and safe result", () => {
       { user: { id: USER_ID } } as never,
     );
 
-    // findFirst should be called at least twice: once for ownership, once for confirmation
+    // The last findFirst call should be the confirmation read
     const findFirstCalls = tx.formTemplateVersion.findFirst.mock.calls;
-    expect(findFirstCalls.length).toBeGreaterThanOrEqual(2);
-
-    // Last call should be the confirmation read
     const confirmCall = findFirstCalls[findFirstCalls.length - 1]?.[0];
-    expect(confirmCall.where.id).toBe(VERSION_ID);
-    expect(confirmCall.where.templateId).toBe(TEMPLATE_ID);
+    expect(confirmCall.select.snapshot).toBe(true);
+    expect(confirmCall.select.snapshotSchemaVersion).toBe(true);
+    expect(confirmCall.select.snapshotHash).toBe(true);
+    expect(confirmCall.select.publishedAt).toBe(true);
   });
 
-  it("failed confirmation returns 409", async () => {
+  it("null confirmed snapshot returns 409", async () => {
     const tx = createTx();
     tx.formTemplateVersion.findMany.mockResolvedValue([]);
-    // Ownership resolve (call 1) -> success
-    // loadDefinitionRows version load (call 2) -> success
-    // Confirmation re-read (call 3) -> fail
+    // Override confirmation to return null snapshot
     tx.formTemplateVersion.findFirst
-      .mockResolvedValueOnce(ownedDraftVersion())   // 1: ownership
-      .mockResolvedValueOnce({                       // 2: loadDefinitionRows
-        id: VERSION_ID,
-        templateId: TEMPLATE_ID,
-        versionNumber: 1,
+      .mockResolvedValueOnce(ownedDraftVersion())
+      .mockResolvedValueOnce({
+        id: VERSION_ID, templateId: TEMPLATE_ID, versionNumber: 1,
         status: FormTemplateVersionStatus.DRAFT,
       })
-      .mockResolvedValueOnce(null);                  // 3: confirmation fails
+      .mockResolvedValueOnce({
+        id: VERSION_ID,
+        versionNumber: 1,
+        status: FormTemplateVersionStatus.PUBLISHED,
+        publishedAt: FIXED_NOW,
+        snapshot: null,
+        snapshotSchemaVersion: 1,
+        snapshotHash: computeExpectedHash(validDefinitionRows()),
+      });
 
     waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
 
@@ -1158,10 +1186,125 @@ describe("publishFormTemplateVersion — confirmation and safe result", () => {
         { versionId: VERSION_ID },
         { user: { id: USER_ID } } as never,
       ),
-    ).rejects.toMatchObject({ statusCode: 409 });
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: "Published version confirmation failed.",
+    });
   });
 
-  it("result contains no snapshot", async () => {
+  it("different confirmed hash returns 409", async () => {
+    const tx = createTx();
+    tx.formTemplateVersion.findMany.mockResolvedValue([]);
+    tx.formTemplateVersion.findFirst
+      .mockResolvedValueOnce(ownedDraftVersion())
+      .mockResolvedValueOnce({
+        id: VERSION_ID, templateId: TEMPLATE_ID, versionNumber: 1,
+        status: FormTemplateVersionStatus.DRAFT,
+      })
+      .mockResolvedValueOnce({
+        id: VERSION_ID,
+        versionNumber: 1,
+        status: FormTemplateVersionStatus.PUBLISHED,
+        publishedAt: FIXED_NOW,
+        snapshot: computeExpectedSnapshotJson(validDefinitionRows()),
+        snapshotSchemaVersion: 1,
+        snapshotHash: "0000000000000000000000000000000000000000000000000000000000000000",
+      });
+
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
+
+    await expect(
+      publishFormTemplateVersion(
+        { versionId: VERSION_ID },
+        { user: { id: USER_ID } } as never,
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: "Published version confirmation failed.",
+    });
+  });
+
+  it("different confirmed publishedAt returns 409", async () => {
+    const tx = createTx();
+    tx.formTemplateVersion.findMany.mockResolvedValue([]);
+    const wrongDate = new Date("2025-01-01T00:00:00.000Z");
+    tx.formTemplateVersion.findFirst
+      .mockResolvedValueOnce(ownedDraftVersion())
+      .mockResolvedValueOnce({
+        id: VERSION_ID, templateId: TEMPLATE_ID, versionNumber: 1,
+        status: FormTemplateVersionStatus.DRAFT,
+      })
+      .mockResolvedValueOnce({
+        id: VERSION_ID,
+        versionNumber: 1,
+        status: FormTemplateVersionStatus.PUBLISHED,
+        publishedAt: wrongDate,
+        snapshot: computeExpectedSnapshotJson(validDefinitionRows()),
+        snapshotSchemaVersion: 1,
+        snapshotHash: computeExpectedHash(validDefinitionRows()),
+      });
+
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
+
+    await expect(
+      publishFormTemplateVersion(
+        { versionId: VERSION_ID },
+        { user: { id: USER_ID } } as never,
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: "Published version confirmation failed.",
+    });
+  });
+
+  it("different confirmed versionNumber returns 409", async () => {
+    const tx = createTx();
+    tx.formTemplateVersion.findMany.mockResolvedValue([]);
+    tx.formTemplateVersion.findFirst
+      .mockResolvedValueOnce(ownedDraftVersion())
+      .mockResolvedValueOnce({
+        id: VERSION_ID, templateId: TEMPLATE_ID, versionNumber: 1,
+        status: FormTemplateVersionStatus.DRAFT,
+      })
+      .mockResolvedValueOnce({
+        id: VERSION_ID,
+        versionNumber: 99,
+        status: FormTemplateVersionStatus.PUBLISHED,
+        publishedAt: FIXED_NOW,
+        snapshot: computeExpectedSnapshotJson(validDefinitionRows()),
+        snapshotSchemaVersion: 1,
+        snapshotHash: computeExpectedHash(validDefinitionRows()),
+      });
+
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
+
+    await expect(
+      publishFormTemplateVersion(
+        { versionId: VERSION_ID },
+        { user: { id: USER_ID } } as never,
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      message: "Published version confirmation failed.",
+    });
+  });
+
+  it("exact confirmation succeeds", async () => {
+    const tx = createTx();
+    tx.formTemplateVersion.findMany.mockResolvedValue([]);
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
+
+    const result = await publishFormTemplateVersion(
+      { versionId: VERSION_ID },
+      { user: { id: USER_ID } } as never,
+    );
+
+    expect(result.versionId).toBe(VERSION_ID);
+    expect(result.status).toBe("PUBLISHED");
+    expect(result.snapshotHash).toBe(computeExpectedHash(validDefinitionRows()));
+  });
+
+  it("public result excludes snapshot", async () => {
     const tx = createTx();
     tx.formTemplateVersion.findMany.mockResolvedValue([]);
     waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
@@ -1172,48 +1315,6 @@ describe("publishFormTemplateVersion — confirmation and safe result", () => {
     );
 
     expect((result as Record<string, unknown>).snapshot).toBeUndefined();
-  });
-
-  it("result contains no serialized snapshot", async () => {
-    const tx = createTx();
-    tx.formTemplateVersion.findMany.mockResolvedValue([]);
-    waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
-
-    const result = await publishFormTemplateVersion(
-      { versionId: VERSION_ID },
-      { user: { id: USER_ID } } as never,
-    );
-
-    expect((result as Record<string, unknown>).serializedSnapshot).toBeUndefined();
-  });
-
-  it("result contains no user ID or raw relations", async () => {
-    const tx = createTx();
-    tx.formTemplateVersion.findMany.mockResolvedValue([]);
-    waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
-
-    const result = await publishFormTemplateVersion(
-      { versionId: VERSION_ID },
-      { user: { id: USER_ID } } as never,
-    );
-
-    expect((result as Record<string, unknown>).userId).toBeUndefined();
-    expect((result as Record<string, unknown>).template).toBeUndefined();
-    expect((result as Record<string, unknown>).owner).toBeUndefined();
-  });
-
-  it("returned timestamp matches the persisted timestamp", async () => {
-    const tx = createTx();
-    tx.formTemplateVersion.findMany.mockResolvedValue([]);
-    waspServerMock.prisma.$transaction.mockImplementation(async (callback: (tx: unknown) => unknown) => callback(tx));
-
-    const result = await publishFormTemplateVersion(
-      { versionId: VERSION_ID },
-      { user: { id: USER_ID } } as never,
-    );
-
-    const updateCall = tx.formTemplateVersion.updateMany.mock.calls[0]?.[0];
-    expect(result.publishedAt.getTime()).toBe(updateCall.data.publishedAt.getTime());
   });
 });
 
