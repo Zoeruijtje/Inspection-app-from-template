@@ -18,16 +18,42 @@
 - Phase 3A-4B authenticated root container CRUD, parent compatibility checks, cross-version prevention, generic cycle prevention helpers, and source/destination container ordering normalization are implemented.
 - Phase 3A-4C1 authenticated baseline block CRUD, registry validation, immutable stable keys, block/container compatibility, and source/destination block ordering normalization are implemented.
 - Phase 3A-4C2A option capability contract, registry declarations, pure capability helpers, and database-enforced per-block option-value uniqueness are implemented.
+- Phase 3A-4C2B option CRUD, capability enforcement, duplicate-value handling, contiguous ordering, contextual default validation, and atomic default maintenance are implemented.
 
 ## Next milestone
 
-Phase 3A-4C2B — Option CRUD, Ordering, and Contextual Default Integrity. Do not start publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
+Phase 3A-4D or Phase 3A-4E — Whole-draft definition validation, version cloning, publish transaction, canonical snapshot creation, snapshot hashing, and published-version immutability verification. Do not start builder UI, drag-and-drop, runtime execution, reports, or PDF work outside these backend foundation checkpoints.
 
 ## In progress
 
-- Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
+- None.
 
 ## Completed
+
+- Phase 3A-4C2B option CRUD, ordering, and contextual default integrity completed 2026-06-29.
+
+- Implemented authenticated `createFormBlockOption`, `updateFormBlockOption`, `moveFormBlockOption`, and `deleteFormBlockOption` actions for active owned draft versions only.
+- Added strict Zod schemas for option create/update/move/delete with UUID validation, label/value trimming and max-length, blank-to-null color normalization, null/clear semantics for color and score (with `hasOwn` checks for `score: 0`), and unknown-property rejection. Rejected raw `sortOrder`, `blockId` on update, timestamps, and persistence fields.
+- Added safe result DTOs (`SafeFormBlockOption`, `CreateFormBlockOptionResult`, `UpdateFormBlockOptionResult`, `MoveFormBlockOptionResult`, `DeleteFormBlockOptionResult`) that never expose user IDs, template ownership data, or raw relation objects.
+- Added ownership and lifecycle enforcement through `requireOwnedBlockForOptionWrite` and `requireOwnedOptionForWrite` resolving ownership via `block → templateVersion → template.userId` and `option → block → templateVersion → template.userId` inside the same Prisma transaction. Unauthenticated access returns 401; unowned resources return 404; archived templates and non-draft versions return 409.
+- Added option-capability enforcement using `requireOptionBackedCapability` wrapped in `withOptionCapabilityHttpError` that translates `OptionCapabilityError` to HTTP 400. Option-disabled blocks (heading, paragraph, short_text) reject option operations with 400; unknown persisted block types return 409.
+- Added `maximumOptions` and `minimumOptions` enforcement from the registry capability contract. Current `single_select` has `minimumOptions: 0` and `maximumOptions: null`, so these checks currently do not restrict normal editing but honor the registry contract generically.
+- Added targeted Prisma `P2002` duplicate-value error handling: only `blockId + value` conflicts are mapped to HTTP 409 with "An option with this value already exists in the block." Unrelated `P2002` errors, foreign-key failures, and general database errors are rethrown without translation.
+- Added block-scoped contiguous option ordering (0, 1, 2, ...) after every create, move, or delete. Reused `buildContiguousOrderUpdates`, `insertIdAt`, `moveIdToIndex`, `removeId`, and `orderBySortOrderThenId`. Normalization writes use `id + blockId` through `updateMany`; scoped update count failures return 409. Options are loaded deterministically by `sortOrder ASC, id ASC`.
+- Implemented exact index semantics: create position `0..N` or append by omission; move index `0..N-1` (same-index moves still normalize the complete scope); delete compacts remaining siblings.
+- Created focused default-integrity helpers: `parseStoredConfig` (validates stored config, returns 409 on malformation), `getCurrentDefaultValue` (reads from parsed config using registry capability's `defaultValueConfigKey`), `getDefaultValueConfigKey`, `buildConfigWithDefault`, `buildConfigWithoutDefault`, `validateAndBuildConfigWithDefault` (contextually verifies persisted option matches proposed default), and `createTxFindOptionByValue` (pure data-access factory for tx-scoped option lookup).
+- Modified `parseBlockConfig` in `blockOperations.ts` to remove the hard-coded `single_select.defaultValue` rejection; it is now a pure registry schema parser.
+- Modified `createFormBlock` to reject option-backed blocks with a defined default key at creation time (HTTP 400: "Persisted options must be created before assigning a default value."), because the block has no ID or persisted options yet. Nested option creation is not supported.
+- Modified `updateFormBlock` to use `validateAndBuildConfigWithDefault` for option-backed blocks, which verifies a matching persisted option exists under the same block before accepting the config. Unmatched defaults return HTTP 400.
+- Implemented atomic option/default consistency: updating the current default option's value atomically updates the block config inside the same transaction; updating a non-default option leaves config unchanged. Deleting the current default option atomically clears the default from block config and returns `clearedDefaultValue: true`; deleting a non-default option returns `false`. Creating and moving options never automatically assign or alter the default.
+- All operations use `Prisma.TransactionIsolationLevel.RepeatableRead` with all ownership, lifecycle, block/option reads, config/contextual validation reads, mutations, duplicate-producing writes, block config updates, and ordering normalization performed through `tx`.
+- Added Wasp declarations in `optionOperations.wasp.ts` for the four option actions with `auth: true` and entities `FormTemplate`, `FormTemplateVersion`, `FormBlockDefinition`, `FormBlockOption`. Registered the spec in `app/main.wasp.ts`.
+- Added focused Vitest coverage: option validation (40 tests), default integrity (18 tests), and option operations (39 tests) covering input validation, ownership/lifecycle, capability enforcement, duplicate-value handling, ordering, default behavior, safe result DTOs, and update semantics (score 0, null clears, unchanged field preservation).
+- Existing block operations test updated: `parseBlockConfig` no longer hard-rejects `single_select.defaultValue`; `createFormBlock` rejects option-backed defaults at creation; `updateFormBlock` contextually validates defaults. Block operations test `createTx()` extended with `formBlockOption.findFirst` for the contextual default lookup path.
+- All 20 existing test files and 3 new test files pass (209 form-template tests, unchanged from checkpoint baseline count after adding new tests and adjusting one existing test assertion). Registry tests (38) pass unchanged.
+- Checks run: `git diff --check` passed, `make check` passed, `npx prisma validate` passed, `wasp start` compiled successfully (SDK built; DB connection not available locally).
+- Builder UI, drag-and-drop, runtime forms, publishing, version cloning, canonical snapshots, snapshot hashing, reports, and PDF work remain deferred.
+- No schema, migration, registry, UI, runtime, report, or PDF code was changed. Restricted diff (schema/migrations/registries/clients/properties/inspections/spikes) is empty.
 
 - Phase 3A-4C2A option capability contract and database value uniqueness completed 2026-06-29.
 

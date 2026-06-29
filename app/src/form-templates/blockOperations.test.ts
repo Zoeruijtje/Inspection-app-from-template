@@ -726,6 +726,9 @@ function createTx() {
       updateMany: vi.fn(async () => ({ count: 1 })),
       delete: vi.fn(),
     },
+    formBlockOption: {
+      findFirst: vi.fn(),
+    },
   };
 }
 

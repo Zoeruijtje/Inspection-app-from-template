@@ -15,6 +15,7 @@ import { demoAiAppSpec } from "./src/demo-ai-app/demo-ai-app.wasp";
 import { fileUploadSpec } from "./src/file-upload/file-upload.wasp";
 import { formTemplateBlockSpec } from "./src/form-templates/blockOperations.wasp";
 import { formTemplateContainerSpec } from "./src/form-templates/containerOperations.wasp";
+import { formTemplateOptionSpec } from "./src/form-templates/optionOperations.wasp";
 import { formTemplatesSpec } from "./src/form-templates/formTemplates.wasp";
 import { formTemplateDefinitionSpec } from "./src/form-templates/definitionOperations.wasp";
 import { inspectionsSpec } from "./src/inspections/inspections.wasp";
@@ -59,6 +60,7 @@ export default app({
     formTemplateDefinitionSpec,
     formTemplateContainerSpec,
     formTemplateBlockSpec,
+    formTemplateOptionSpec,
     demoAiAppSpec,
     paymentSpec,
     fileUploadSpec,

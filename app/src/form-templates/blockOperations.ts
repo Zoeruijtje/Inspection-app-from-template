@@ -46,6 +46,11 @@ import {
   OrderingError,
   removeId,
 } from "./definitionOrdering";
+import { isOptionBackedBlock } from "./blockOptionCapability";
+import {
+  createTxFindOptionByValue,
+  validateAndBuildConfigWithDefault,
+} from "./optionDefaultIntegrity";
 
 export type SafeFormBlockDefinition = {
   id: string;
@@ -194,7 +199,16 @@ export const updateFormBlock: UpdateFormBlock<
       }
 
       if (hasOwnInputField(args, "config")) {
-        updateData.config = parseBlockConfig(blockDefinition, args.config);
+        if (isOptionBackedBlock(blockDefinition)) {
+          updateData.config = await validateAndBuildConfigWithDefault(
+            blockDefinition,
+            block.id,
+            args.config,
+            createTxFindOptionByValue(tx),
+          );
+        } else {
+          updateData.config = parseBlockConfig(blockDefinition, args.config);
+        }
       }
 
       const updatedBlock = await tx.formBlockDefinition.update({
@@ -413,6 +427,22 @@ async function createFormBlockOnce(
           ? args.config
           : blockDefinition.defaultConfig,
       );
+
+      // Option-backed blocks cannot assign a default until persisted options exist.
+      if (isOptionBackedBlock(blockDefinition)) {
+        const cap = blockDefinition.optionCapability;
+        if (
+          typeof config === "object" &&
+          config !== null &&
+          cap.defaultValueConfigKey in (config as Record<string, unknown>) &&
+          (config as Record<string, unknown>)[cap.defaultValueConfigKey] !== undefined
+        ) {
+          throw new HttpError(
+            400,
+            "Persisted options must be created before assigning a default value.",
+          );
+        }
+      }
       const orderedBlockIds = await loadOrderedBlockIds(tx, {
         templateVersionId: version.id,
         containerId: destinationContainer.id,
@@ -591,19 +621,6 @@ function parseBlockConfig(
   const result = definition.configSchema.safeParse(config);
   if (!result.success) {
     throw new HttpError(400, "Invalid block config.");
-  }
-
-  if (
-    definition.typeId === "single_select" &&
-    typeof result.data === "object" &&
-    result.data !== null &&
-    "defaultValue" in result.data &&
-    (result.data as { defaultValue?: unknown }).defaultValue !== undefined
-  ) {
-    throw new HttpError(
-      400,
-      "Single-select default values require persisted options.",
-    );
   }
 
   return result.data as Prisma.InputJsonValue;
