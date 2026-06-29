@@ -11,16 +11,48 @@
 - Master planning phase completed on 2026-06-17. Product redefined around generic form builder platform.
 - Phase 3A0-A v5 Stage B nested group manual pointer validation passed; Stage B is MANUALLY VERIFIED PASS.
 - Phase 3A0-B Gate 1 functional feasibility: MANUALLY VERIFIED PASS. Playwright/Chromium remains the preferred PDF engine candidate. Gate 2 and deployment suitability validation remain pending.
+- Phase 3A-1 production form-template schema and migration are complete.
+- Phase 3A-2 controlled source-owned form-builder registries are complete.
+- Phase 3A-3 authenticated form-template ownership, metadata, and lifecycle server operations are implemented.
 
 ## Next milestone
 
-Create a dedicated Gate 1 commit boundary, then start Gate 2 extended PDF fixtures only after explicit user approval. Deployment/container suitability remains unresolved. Phase 3A0-A v5 Stage C support behavior remains deferred.
+Phase 3A-4 — Definition CRUD, tree integrity, and integer ordering. Do not start publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
 
 ## In progress
 
-- Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
+- Phase 3A-3 is implemented and awaiting review/commit. Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
 
 ## Completed
+
+- Phase 3A-3 template ownership/lifecycle operations completed 2026-06-29.
+
+- Added `app/src/form-templates/` server foundation for authenticated user-owned template metadata and version metadata operations.
+- Implemented strict Zod validation for create/update/archive/restore/version/template lookup and draft-only delete inputs. Tags are trimmed, empty tags are removed, omitted tags become `[]`, and duplicate normalized tags are rejected.
+- Implemented reusable auth/ownership/lifecycle helpers for authenticated user id, owned template lookup, owned version lookup through parent template ownership, active-template assertion, and draft-version assertion.
+- Implemented safe metadata queries: `getFormTemplates`, `getFormTemplateById`, and `getFormTemplateVersionById`. Snapshot JSON and normalized page/container/block/option trees are not returned.
+- Implemented actions: `createFormTemplate`, `updateFormTemplate`, `archiveFormTemplate`, `restoreFormTemplate`, and `deleteDraftOnlyFormTemplate`.
+- `createFormTemplate` creates the template and initial draft version #1 in one transaction. Metadata updates and lifecycle transitions use state-checked transactional updates. Draft-only delete revalidates confirmation name and draft-only history transactionally before deleting.
+- Added Wasp declarations with `FormTemplate` and `FormTemplateVersion` entities only; no routes, pages, navigation, UI, definition CRUD, publishing, runtime, reports, or PDF integration were added.
+- Added focused Vitest unit tests for validation, authorization helpers, and lifecycle/deletion policy.
+- Checks run: focused Vitest suite passed (`23` tests); `git diff --check` passed; `make check` passed; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no scripts present.
+- `wasp start` successfully completed project compilation and SDK generation, including generated form-template operation types, then failed before dev-server startup because the database was not running. `wasp start db` could not start the managed database because Docker is not installed/available in this WSL distro.
+- No Prisma schema, migration, registry, UI, runtime, report, or PDF code was changed.
+
+- Phase 3A-2 controlled source-owned registries completed 2026-06-18.
+
+- Added controlled form-builder registries under `app/src/form-builder/registry/`.
+- Registered baseline container type `section`.
+- Registered baseline block types `heading`, `paragraph`, `short_text`, and `single_select`.
+- Registry contracts are strict, registry results are deeply immutable for plain objects and arrays, duplicate type IDs are rejected, and registry self-checks pass.
+- No template CRUD, definition CRUD, publishing, runtime, UI, reports, or PDF work was completed in this checkpoint.
+
+- Phase 3A-1 schema/migration completed 2026-06-18.
+
+- Added production schema and migration for `FormTemplate`, `FormTemplateVersion`, `FormPageDefinition`, `FormContainerDefinition`, `FormBlockDefinition`, and `FormBlockOption`.
+- Added template lifecycle and version status enums.
+- Added page-versus-parent XOR database constraint for containers and one-draft-per-template partial unique index.
+- No definition CRUD, registry validation, publishing, runtime, UI, reports, or PDF work was completed in this checkpoint.
 
 - Phase 3A0-B Gate 1 manual review completed 2026-06-18.
 

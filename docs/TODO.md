@@ -138,10 +138,27 @@
 
 ## Phase 3A — Platform architecture & schema foundation
 
-- [ ] Migration created and applied: `wasp db migrate-dev --name add_template_models`
-- [ ] make check passes
-- [ ] wasp start compiles
-- [ ] Template CRUD with ownership works
+- [x] Phase 3A-1 migration created and applied: `wasp db migrate-dev --name add_template_models`
+- [x] Phase 3A-1 production schema added for templates, versions, pages, containers, blocks, and block options
+- [x] Phase 3A-1 lifecycle/version enums added
+- [x] Phase 3A-1 page-versus-parent XOR constraint added
+- [x] Phase 3A-1 one-draft-per-template partial unique index added
+- [x] Phase 3A-2 controlled container registry added with baseline `section`
+- [x] Phase 3A-2 controlled block registry added with baseline `heading`, `paragraph`, `short_text`, and `single_select`
+- [x] Phase 3A-2 registry schemas and response contracts are strict
+- [x] Phase 3A-2 registry self-checks pass
+- [x] Phase 3A-3 authenticated template metadata queries implemented
+- [x] Phase 3A-3 owned template version metadata query implemented
+- [x] Phase 3A-3 create template with initial draft version implemented transactionally
+- [x] Phase 3A-3 update template metadata implemented for active owned templates
+- [x] Phase 3A-3 archive and restore lifecycle actions implemented with state-checked updates
+- [x] Phase 3A-3 draft-only template delete implemented with exact name confirmation
+- [x] Phase 3A-3 reusable ownership and lifecycle helpers implemented
+- [x] Phase 3A-3 focused validation, authorization, and lifecycle policy tests pass
+- [x] make check passes for Phase 3A-3
+- [x] Wasp compile phase succeeds for Phase 3A-3; full dev-server startup remains blocked locally by unavailable Docker/dev database
+- [ ] Template management UI pages
+- [ ] Full template CRUD UI with ownership works
 - [ ] Version draft/publish lifecycle works
 - [ ] Published version is immutable
 - [ ] Block config validated against registry schemas
@@ -149,7 +166,13 @@
 - [ ] Registry can register new block types without schema changes
 - [ ] Existing app functionality (clients, properties, inspections) preserved
 - [ ] Ordering strategy from Phase 3A0-A applied to sortOrder columns
-- [ ] Container reference approach resolved (FK vs polymorphic)
+- [x] Container reference approach resolved (explicit FK to `FormContainerDefinition`, not polymorphic block parents)
+- [ ] Phase 3A-4 authenticated page/container/block/option definition CRUD
+- [ ] Phase 3A-4 read-only normalized definition tree loading
+- [ ] Phase 3A-4 draft-only mutability checks
+- [ ] Phase 3A-4 registry validation for definition writes
+- [ ] Phase 3A-4 cross-version prevention and cycle prevention
+- [ ] Phase 3A-4 integer sort-order normalization
 
 ## Phase 3B — Basic template management
 
