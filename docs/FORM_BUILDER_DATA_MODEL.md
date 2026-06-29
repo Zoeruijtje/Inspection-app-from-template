@@ -159,16 +159,16 @@ Do not add a broad database uniqueness constraint across polymorphic parent scop
 
 ### Ordering strategy comparison
 
-| Criterion                         | Integer                                 | Fractional                                                     | LexoRank                                          |
-| --------------------------------- | --------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------- |
-| Implementation complexity         | Low                                     | Medium                                                         | High                                              |
-| Write amplification (10 items)    | Up to 10 rows per affected container    | Usually 1 row                                                  | Usually 1 row                                     |
-| Write amplification (100 items)   | Up to 100 rows per affected container   | Usually 1 row                                                  | Usually 1 row                                     |
-| Precision/longevity               | No precision issues after normalization | Needs periodic renormalization after repeated midpoint inserts | Key length can grow; may need rebalancing         |
-| Query performance                 | Simple numeric order                    | Simple numeric order                                           | String order; still workable but less transparent |
-| Debuggability                     | Excellent                               | Good until gaps get dense                                      | Harder for humans to inspect                      |
-| Collaborative editing suitability | Limited without conflict handling       | Better                                                         | Stronger fit for collaborative systems            |
-| Prisma compatibility              | Excellent                               | Good, with precision care                                      | Good, with custom key generation                  |
+| Criterion                         | Integer | Fractional | LexoRank |
+| --------------------------------- | ------- | ---------- | -------- |
+| Implementation complexity         | Low     | Medium     | High     |
+| Write amplification (10 items)    | Up to 10 rows per affected container | Usually 1 row | Usually 1 row |
+| Write amplification (100 items)   | Up to 100 rows per affected container | Usually 1 row | Usually 1 row |
+| Precision/longevity               | No precision issues after normalization | Needs periodic renormalization after repeated midpoint inserts | Key length can grow; may need rebalancing |
+| Query performance                 | Simple numeric order | Simple numeric order | String order; still workable but less transparent |
+| Debuggability                     | Excellent | Good until gaps get dense | Harder for humans to inspect |
+| Collaborative editing suitability | Limited without conflict handling | Better | Stronger fit for collaborative systems |
+| Prisma compatibility              | Excellent | Good, with precision care | Good, with custom key generation |
 
 Integer ordering is chosen because initial template editing is single-user, expected container sizes are modest, and deterministic transaction behavior is easier to test and debug. Fractional and lexicographic ranking remain future options if collaborative editing or high-frequency concurrent ordering becomes a real requirement. Lexicographic ranking is suitable for collaborative systems but introduces greater implementation and rebalancing complexity.
 
@@ -204,35 +204,35 @@ Use enums in the production schema rather than unconstrained strings.
 
 ### `FormTemplate`
 
-| Field           | Type                        | Constraints                                   | Description           |
-| --------------- | --------------------------- | --------------------------------------------- | --------------------- |
-| id              | String (UUID)               | @id @default(uuid())                          | Primary key           |
-| name            | String                      | Required, max 200 chars                       | Template display name |
-| description     | String?                     | Optional, max 2000 chars                      | Template description  |
-| category        | String?                     | Optional                                      | User-defined category |
-| tags            | String[]                    | Optional                                      | User-defined tags     |
-| userId          | String                      | FK → User.id                                  | Owner                 |
-| user            | User                        | @relation(fields: [userId], references: [id]) | Owner relation        |
-| lifecycleStatus | FormTemplateLifecycleStatus | Default ACTIVE                                | ACTIVE or ARCHIVED    |
-| createdAt       | DateTime                    | @default(now())                               | Creation timestamp    |
-| updatedAt       | DateTime                    | @updatedAt                                    | Last update timestamp |
+| Field       | Type          | Constraints                                   | Description                |
+| ----------- | ------------- | --------------------------------------------- | -------------------------- |
+| id          | String (UUID) | @id @default(uuid())                          | Primary key                |
+| name        | String        | Required, max 200 chars                       | Template display name      |
+| description | String?       | Optional, max 2000 chars                      | Template description       |
+| category    | String?       | Optional                                      | User-defined category      |
+| tags        | String[]      | Optional                                      | User-defined tags          |
+| userId      | String        | FK → User.id                                  | Owner                      |
+| user        | User          | @relation(fields: [userId], references: [id]) | Owner relation             |
+| lifecycleStatus | FormTemplateLifecycleStatus | Default ACTIVE                                | ACTIVE or ARCHIVED         |
+| createdAt   | DateTime      | @default(now())                               | Creation timestamp         |
+| updatedAt   | DateTime      | @updatedAt                                    | Last update timestamp      |
 
 Indexes: `@@index([userId])`
 
 ### `FormTemplateVersion`
 
-| Field                 | Type                      | Constraints                                       | Description                                       |
-| --------------------- | ------------------------- | ------------------------------------------------- | ------------------------------------------------- |
-| id                    | String (UUID)             | @id @default(uuid())                              | Primary key                                       |
-| templateId            | String                    | FK → FormTemplate.id                              | Parent template                                   |
-| template              | FormTemplate              | @relation(fields: [templateId], references: [id]) | Parent relation                                   |
-| versionNumber         | Int                       | Required                                          | Sequential version number                         |
-| status                | FormTemplateVersionStatus | Default DRAFT                                     | DRAFT, PUBLISHED, SUPERSEDED                      |
-| publishedAt           | DateTime?                 | Nullable                                          | When published                                    |
-| snapshot              | JSON?                     | Nullable                                          | Canonical serialized template tree set on publish |
-| snapshotSchemaVersion | Int?                      | Nullable                                          | Snapshot format version                           |
-| snapshotHash          | String?                   | Nullable                                          | Integrity hash for the canonical snapshot         |
-| createdAt             | DateTime                  | @default(now())                                   | Creation timestamp                                |
+| Field         | Type          | Constraints                                       | Description                                 |
+| ------------- | ------------- | ------------------------------------------------- | ------------------------------------------- |
+| id            | String (UUID) | @id @default(uuid())                              | Primary key                                 |
+| templateId    | String        | FK → FormTemplate.id                              | Parent template                             |
+| template      | FormTemplate  | @relation(fields: [templateId], references: [id]) | Parent relation                             |
+| versionNumber | Int           | Required                                          | Sequential version number                   |
+| status        | FormTemplateVersionStatus | Default DRAFT                                    | DRAFT, PUBLISHED, SUPERSEDED                |
+| publishedAt   | DateTime?     | Nullable                                          | When published                              |
+| snapshot      | JSON?         | Nullable                                          | Canonical serialized template tree set on publish |
+| snapshotSchemaVersion | Int?   | Nullable                                          | Snapshot format version                     |
+| snapshotHash  | String?       | Nullable                                          | Integrity hash for the canonical snapshot   |
+| createdAt     | DateTime      | @default(now())                                   | Creation timestamp                          |
 
 Indexes: `@@index([templateId])`, `@@unique([templateId, versionNumber])`
 
@@ -256,18 +256,18 @@ Deletion: Cascade to root containers on this page; containers cascade to child c
 
 ### `FormContainerDefinition`
 
-| Field             | Type          | Constraints                           | Description                                                                                        |
-| ----------------- | ------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| id                | String (UUID) | @id @default(uuid())                  | Primary key                                                                                        |
-| templateVersionId | String        | FK → FormTemplateVersion.id           | Parent version                                                                                     |
-| containerType     | String        | Required                              | section, group, column_group, column, repeating_group, conditional_container, tab_group, tab_panel |
-| pageId            | String?       | FK → FormPageDefinition.id (nullable) | Parent page (for sections)                                                                         |
-| parentContainerId | String?       | Self-referential FK                   | Parent container (for nested groups/columns)                                                       |
-| title             | String?       | Optional, max 200 chars               | Container title                                                                                    |
-| config            | JSON?         | Optional                              | Container-specific configuration                                                                   |
-| sortOrder         | Int           | Required                              | Order within parent                                                                                |
-| createdAt         | DateTime      | @default(now())                       | Creation timestamp                                                                                 |
-| updatedAt         | DateTime      | @updatedAt                            | Last update timestamp                                                                              |
+| Field             | Type           | Constraints                           | Description                                       |
+| ----------------- | -------------- | ------------------------------------- | ------------------------------------------------- |
+| id                | String (UUID)  | @id @default(uuid())                  | Primary key                                       |
+| templateVersionId | String         | FK → FormTemplateVersion.id           | Parent version                                    |
+| containerType     | String         | Required                              | section, group, column_group, column, repeating_group, conditional_container, tab_group, tab_panel |
+| pageId            | String?        | FK → FormPageDefinition.id (nullable) | Parent page (for sections)                        |
+| parentContainerId | String?        | Self-referential FK                   | Parent container (for nested groups/columns)      |
+| title             | String?        | Optional, max 200 chars               | Container title                                   |
+| config            | JSON?          | Optional                              | Container-specific configuration                  |
+| sortOrder         | Int            | Required                              | Order within parent                               |
+| createdAt         | DateTime       | @default(now())                       | Creation timestamp                                |
+| updatedAt         | DateTime       | @updatedAt                            | Last update timestamp                             |
 
 Indexes: `@@index([templateVersionId])`, `@@index([pageId])`, `@@index([parentContainerId])`
 
@@ -283,24 +283,24 @@ Container parent invariants:
 
 ### `FormBlockDefinition`
 
-| Field                      | Type                    | Constraints                                                           | Description                                     |
-| -------------------------- | ----------------------- | --------------------------------------------------------------------- | ----------------------------------------------- |
-| id                         | String (UUID)           | @id @default(uuid())                                                  | Primary key                                     |
-| templateVersionId          | String                  | FK → FormTemplateVersion.id                                           | Parent version                                  |
-| blockType                  | String                  | Required                                                              | Block type identifier (registry key)            |
-| blockImplementationVersion | Int                     | Required                                                              | Runtime behavior version                        |
-| configSchemaVersion        | Int                     | Required                                                              | Config schema version                           |
-| config                     | JSON                    | Required                                                              | Validated block configuration                   |
-| containerId                | String                  | FK → FormContainerDefinition.id                                       | Real parent container                           |
-| container                  | FormContainerDefinition | @relation(fields: [containerId], references: [id], onDelete: Cascade) | Parent relation                                 |
-| sortOrder                  | Int                     | Required                                                              | Order within container                          |
-| stableKey                  | String                  | Required, unique within version                                       | Stable identifier for rules/bindings/references |
-| label                      | String                  | Required, max 200 chars                                               | Display label                                   |
-| required                   | Boolean                 | @default(false)                                                       | Whether a response is required                  |
-| conditionalVisibility      | JSON?                   | Optional                                                              | Declarative visibility rule                     |
-| validation                 | JSON?                   | Optional                                                              | Additional validation rules (min/max/regex)     |
-| createdAt                  | DateTime                | @default(now())                                                       | Creation timestamp                              |
-| updatedAt                  | DateTime                | @updatedAt                                                            | Last update timestamp                           |
+| Field                      | Type           | Constraints                     | Description                                     |
+| -------------------------- | -------------- | ------------------------------- | ----------------------------------------------- |
+| id                         | String (UUID)  | @id @default(uuid())            | Primary key                                     |
+| templateVersionId          | String         | FK → FormTemplateVersion.id     | Parent version                                  |
+| blockType                  | String         | Required                        | Block type identifier (registry key)            |
+| blockImplementationVersion | Int            | Required                        | Runtime behavior version                        |
+| configSchemaVersion        | Int            | Required                        | Config schema version                           |
+| config                     | JSON           | Required                        | Validated block configuration                   |
+| containerId                | String         | FK → FormContainerDefinition.id | Real parent container                           |
+| container                  | FormContainerDefinition | @relation(fields: [containerId], references: [id], onDelete: Cascade) | Parent relation |
+| sortOrder                  | Int            | Required                        | Order within container                          |
+| stableKey                  | String         | Required, unique within version | Stable identifier for rules/bindings/references |
+| label                      | String         | Required, max 200 chars         | Display label                                   |
+| required                   | Boolean        | @default(false)                 | Whether a response is required                  |
+| conditionalVisibility      | JSON?          | Optional                        | Declarative visibility rule                     |
+| validation                 | JSON?          | Optional                        | Additional validation rules (min/max/regex)     |
+| createdAt                  | DateTime       | @default(now())                 | Creation timestamp                              |
+| updatedAt                  | DateTime       | @updatedAt                      | Last update timestamp                           |
 
 Indexes: `@@index([templateVersionId])`, `@@index([containerId])`, `@@unique([templateVersionId, stableKey])`
 
@@ -329,25 +329,25 @@ Every block type must declare whether it supports ordered choices via a discrimi
 
 ```typescript
 export type BlockOptionCapability =
-	| { kind: 'none' }
-	| {
-			kind: 'options';
-			selectionMode: 'single';
-			defaultValueConfigKey: 'defaultValue';
-			minimumOptions: number;
-			maximumOptions: number | null;
-	  };
+  | { kind: "none" }
+  | {
+      kind: "options";
+      selectionMode: "single";
+      defaultValueConfigKey: "defaultValue";
+      minimumOptions: number;
+      maximumOptions: number | null;
+    };
 ```
 
 `optionCapability` is a required field on `BlockTypeDefinition`. The discriminated contract is extensible enough to carry option-specific behavior without checking block type names throughout the application.
 
 **Production baseline declarations (Phase 3A-4C2A):**
 
-| Block type      | Capability                                                                                                                     | Details                                                                  |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| `heading`       | `{ kind: "none" }`                                                                                                             | Not option-backed                                                        |
-| `paragraph`     | `{ kind: "none" }`                                                                                                             | Not option-backed                                                        |
-| `short_text`    | `{ kind: "none" }`                                                                                                             | Not option-backed                                                        |
+| Block type      | Capability | Details |
+| --------------- | ---------- | ------- |
+| `heading`       | `{ kind: "none" }` | Not option-backed |
+| `paragraph`     | `{ kind: "none" }` | Not option-backed |
+| `short_text`    | `{ kind: "none" }` | Not option-backed |
 | `single_select` | `{ kind: "options", selectionMode: "single", defaultValueConfigKey: "defaultValue", minimumOptions: 0, maximumOptions: null }` | Option-backed; draft minimum is 0 (block creatable before options added) |
 
 Catalogue presence does not imply option support. Option support is declared solely by `optionCapability`.
