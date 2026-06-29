@@ -3,6 +3,8 @@ import type { BlockOptionCapability, BlockTypeDefinition } from "../form-builder
 import {
   isOptionBackedBlock,
   requireOptionBackedCapability,
+  assertOptionCreateWithinCapability,
+  assertOptionDeleteWithinCapability,
   OptionCapabilityError,
   type OptionBackedCapability,
 } from "./blockOptionCapability";
@@ -92,6 +94,90 @@ describe("blockOptionCapability helpers", () => {
         expect(error).toBeInstanceOf(Error);
         expect(error).not.toHaveProperty("statusCode");
       }
+    });
+  });
+
+  describe("assertOptionCreateWithinCapability", () => {
+    const capWithMax: OptionBackedCapability = {
+      kind: "options",
+      selectionMode: "single",
+      defaultValueConfigKey: "defaultValue",
+      minimumOptions: 0,
+      maximumOptions: 3,
+    };
+
+    const capUnlimited: OptionBackedCapability = {
+      kind: "options",
+      selectionMode: "single",
+      defaultValueConfigKey: "defaultValue",
+      minimumOptions: 0,
+      maximumOptions: null,
+    };
+
+    it("allows create when below maximumOptions", () => {
+      expect(() =>
+        assertOptionCreateWithinCapability(capWithMax, 2),
+      ).not.toThrow();
+    });
+
+    it("rejects create when at maximumOptions", () => {
+      expect(() =>
+        assertOptionCreateWithinCapability(capWithMax, 3),
+      ).toThrow(OptionCapabilityError);
+    });
+
+    it("error message includes the maximum", () => {
+      expect(() =>
+        assertOptionCreateWithinCapability(capWithMax, 3),
+      ).toThrow(/maximum of 3/);
+    });
+
+    it("allows unlimited when maximumOptions is null", () => {
+      expect(() =>
+        assertOptionCreateWithinCapability(capUnlimited, 9999),
+      ).not.toThrow();
+    });
+  });
+
+  describe("assertOptionDeleteWithinCapability", () => {
+    const capWithMin: OptionBackedCapability = {
+      kind: "options",
+      selectionMode: "single",
+      defaultValueConfigKey: "defaultValue",
+      minimumOptions: 2,
+      maximumOptions: null,
+    };
+
+    const capMinZero: OptionBackedCapability = {
+      kind: "options",
+      selectionMode: "single",
+      defaultValueConfigKey: "defaultValue",
+      minimumOptions: 0,
+      maximumOptions: null,
+    };
+
+    it("allows delete when above minimumOptions", () => {
+      expect(() =>
+        assertOptionDeleteWithinCapability(capWithMin, 3),
+      ).not.toThrow();
+    });
+
+    it("rejects delete when at minimumOptions", () => {
+      expect(() =>
+        assertOptionDeleteWithinCapability(capWithMin, 2),
+      ).toThrow(OptionCapabilityError);
+    });
+
+    it("error message includes the minimum", () => {
+      expect(() =>
+        assertOptionDeleteWithinCapability(capWithMin, 2),
+      ).toThrow(/at least 2/);
+    });
+
+    it("allows deleting the last option when minimumOptions is 0", () => {
+      expect(() =>
+        assertOptionDeleteWithinCapability(capMinZero, 1),
+      ).not.toThrow();
     });
   });
 });

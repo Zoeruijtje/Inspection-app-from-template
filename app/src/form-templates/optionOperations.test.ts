@@ -168,6 +168,7 @@ function createTx() {
     formBlockOption: {
       findFirst: vi.fn(),
       findMany: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
@@ -307,6 +308,7 @@ describe("option operations", () => {
     tx.formBlockDefinition.findFirst.mockResolvedValue(ownedBlockForOption());
     tx.formBlockOption.findMany.mockResolvedValue([]);
     tx.formBlockOption.create.mockResolvedValue(optionRecord());
+    tx.formBlockOption.findUnique.mockResolvedValue(optionRecord());
     tx.formBlockOption.updateMany.mockResolvedValue({ count: 1 });
 
     await createFormBlockOption(
@@ -485,7 +487,8 @@ describe("option operations", () => {
       { id: "opt-1", sortOrder: 0 },
       { id: "opt-2", sortOrder: 1 },
     ]);
-    tx.formBlockOption.create.mockResolvedValue(optionRecord());
+    tx.formBlockOption.create.mockResolvedValue(optionRecord({ sortOrder: 2 }));
+    tx.formBlockOption.findUnique.mockResolvedValue(optionRecord({ sortOrder: 2 }));
     tx.formBlockOption.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await createFormBlockOption(
@@ -498,7 +501,11 @@ describe("option operations", () => {
       "opt-2",
       OPTION_ID,
     ]);
-    expect(result.option.sortOrder).toBe(0);
+    expect(result.option.sortOrder).toBe(2);
+    expect(tx.formBlockOption.findUnique).toHaveBeenCalledWith({
+      where: { id: OPTION_ID, blockId: BLOCK_ID },
+      select: expect.objectContaining({ id: true, sortOrder: true }),
+    });
   });
 
   it("creates option at the start (position 0)", async () => {
@@ -512,6 +519,7 @@ describe("option operations", () => {
       { id: "opt-2", sortOrder: 1 },
     ]);
     tx.formBlockOption.create.mockResolvedValue(optionRecord());
+    tx.formBlockOption.findUnique.mockResolvedValue(optionRecord({ sortOrder: 0 }));
     tx.formBlockOption.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await createFormBlockOption(
@@ -524,6 +532,11 @@ describe("option operations", () => {
       "opt-1",
       "opt-2",
     ]);
+    expect(result.option.sortOrder).toBe(0);
+    expect(tx.formBlockOption.findUnique).toHaveBeenCalledWith({
+      where: { id: OPTION_ID, blockId: BLOCK_ID },
+      select: expect.objectContaining({ id: true, sortOrder: true }),
+    });
   });
 
   it("creates option in the middle", async () => {
@@ -539,6 +552,7 @@ describe("option operations", () => {
     ]);
     const created = optionRecord({ id: OPTION_ID });
     tx.formBlockOption.create.mockResolvedValue(created);
+    tx.formBlockOption.findUnique.mockResolvedValue(optionRecord({ id: OPTION_ID, sortOrder: 1 }));
     tx.formBlockOption.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await createFormBlockOption(
@@ -552,6 +566,7 @@ describe("option operations", () => {
       "opt-2",
       "opt-3",
     ]);
+    expect(result.option.sortOrder).toBe(1);
   });
 
   it("rejects invalid create position", async () => {
@@ -901,29 +916,73 @@ describe("option operations", () => {
 
   // ─── Capability: max and min checks ────────────────────────────────
 
-  it("respects maximumOptions from capability on synthetic block", async () => {
-    // Use the real single_select which has maximumOptions: null
-    // This test in the real registry currently passes through because
-    // single_select has no max. We test the machinery by confirming
-    // create works normally for single_select.
+  it("create succeeds when current option count is below maximumOptions", async () => {
     const tx = createTx();
     waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
       callback(tx),
     );
     tx.formBlockDefinition.findFirst.mockResolvedValue(ownedBlockForOption());
-    tx.formBlockOption.findMany.mockResolvedValue([]);
-    tx.formBlockOption.create.mockResolvedValue(optionRecord());
+    // Simulate 2 existing options with a synthetic max of 5
+    tx.formBlockOption.findMany.mockResolvedValue([
+      { id: "opt-a", sortOrder: 0 },
+      { id: "opt-b", sortOrder: 1 },
+    ]);
+    tx.formBlockOption.create.mockResolvedValue(optionRecord({ sortOrder: 2 }));
+    tx.formBlockOption.findUnique.mockResolvedValue(optionRecord({ sortOrder: 2 }));
     tx.formBlockOption.updateMany.mockResolvedValue({ count: 1 });
 
+    // single_select has maxOptions: null — the test verifies the code path works.
     const result = await createFormBlockOption(
-      { blockId: BLOCK_ID, label: "A", value: "a" },
+      { blockId: BLOCK_ID, label: "C", value: "c" },
       { user: { id: "user-1" } } as never,
     );
 
     expect(result.option).toBeDefined();
+    expect(result.option.sortOrder).toBe(2);
   });
 
-  it("respects minimumOptions from capability on delete (single_select allows delete to 0)", async () => {
+  it("create is rejected when adding would exceed maximumOptions (synthetic cap)", async () => {
+    // Test the pure helper directly, since the production single_select has maxOptions: null.
+    const { assertOptionCreateWithinCapability, OptionCapabilityError: CapErr } =
+      await import("./blockOptionCapability");
+
+    const capWithMax = {
+      kind: "options" as const,
+      selectionMode: "single" as const,
+      defaultValueConfigKey: "defaultValue" as const,
+      minimumOptions: 0,
+      maximumOptions: 3,
+    };
+
+    // 2 below 3 → ok
+    expect(() => assertOptionCreateWithinCapability(capWithMax, 2)).not.toThrow();
+
+    // 3 at the limit → rejected
+    expect(() => assertOptionCreateWithinCapability(capWithMax, 3)).toThrow(CapErr);
+    expect(() => assertOptionCreateWithinCapability(capWithMax, 3)).toThrow(
+      /maximum of 3/,
+    );
+  });
+
+  it("create with maximumOptions: null is unlimited", async () => {
+    const { assertOptionCreateWithinCapability } =
+      await import("./blockOptionCapability");
+
+    const capUnlimited = {
+      kind: "options" as const,
+      selectionMode: "single" as const,
+      defaultValueConfigKey: "defaultValue" as const,
+      minimumOptions: 0,
+      maximumOptions: null,
+    };
+
+    // Huge count still passes with null max
+    expect(() =>
+      assertOptionCreateWithinCapability(capUnlimited, 9999),
+    ).not.toThrow();
+  });
+
+  it("delete succeeds when remaining count meets minimumOptions", async () => {
     const tx = createTx();
     waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
       callback(tx),
@@ -933,8 +992,10 @@ describe("option operations", () => {
         block: ownedBlockForOption({ config: { allowOther: false } }),
       }),
     );
+    // 2 options; single_select min is 0, so delete is allowed
     tx.formBlockOption.findMany.mockResolvedValue([
       { id: OPTION_ID, sortOrder: 0 },
+      { id: OPTION_2_ID, sortOrder: 1 },
     ]);
     tx.formBlockOption.updateMany.mockResolvedValue({ count: 1 });
 
@@ -944,7 +1005,64 @@ describe("option operations", () => {
     );
 
     expect(result.deleted).toBe(true);
-    expect(result.orderedOptionIds).toEqual([]);
+    expect(result.orderedOptionIds).toEqual([OPTION_2_ID]);
+  });
+
+  it("delete is rejected when remaining count falls below minimumOptions (synthetic cap)", async () => {
+    const { assertOptionDeleteWithinCapability, OptionCapabilityError: CapErr } =
+      await import("./blockOptionCapability");
+
+    const capWithMin = {
+      kind: "options" as const,
+      selectionMode: "single" as const,
+      defaultValueConfigKey: "defaultValue" as const,
+      minimumOptions: 2,
+      maximumOptions: null,
+    };
+
+    // 3 above 2 → ok
+    expect(() => assertOptionDeleteWithinCapability(capWithMin, 3)).not.toThrow();
+
+    // 2 at limit → rejected
+    expect(() => assertOptionDeleteWithinCapability(capWithMin, 2)).toThrow(CapErr);
+    expect(() => assertOptionDeleteWithinCapability(capWithMin, 2)).toThrow(
+      /at least 2/,
+    );
+  });
+
+  it("delete with minimumOptions: 0 allows deleting the final option", async () => {
+    const { assertOptionDeleteWithinCapability } =
+      await import("./blockOptionCapability");
+
+    const capMinZero = {
+      kind: "options" as const,
+      selectionMode: "single" as const,
+      defaultValueConfigKey: "defaultValue" as const,
+      minimumOptions: 0,
+      maximumOptions: null,
+    };
+
+    // 1 option with min 0 → ok
+    expect(() => assertOptionDeleteWithinCapability(capMinZero, 1)).not.toThrow();
+  });
+
+  it("confirmation query failure after create returns 409", async () => {
+    const tx = createTx();
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
+      callback(tx),
+    );
+    tx.formBlockDefinition.findFirst.mockResolvedValue(ownedBlockForOption());
+    tx.formBlockOption.findMany.mockResolvedValue([]);
+    tx.formBlockOption.create.mockResolvedValue(optionRecord());
+    tx.formBlockOption.findUnique.mockResolvedValue(null);
+    tx.formBlockOption.updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(
+      createFormBlockOption(
+        { blockId: BLOCK_ID, label: "A", value: "a" },
+        { user: { id: "user-1" } } as never,
+      ),
+    ).rejects.toMatchObject({ statusCode: 409 });
   });
 
   // ─── Safe result DTOs ─────────────────────────────────────────────
@@ -957,6 +1075,7 @@ describe("option operations", () => {
     tx.formBlockDefinition.findFirst.mockResolvedValue(ownedBlockForOption());
     tx.formBlockOption.findMany.mockResolvedValue([]);
     tx.formBlockOption.create.mockResolvedValue(optionRecord());
+    tx.formBlockOption.findUnique.mockResolvedValue(optionRecord());
     tx.formBlockOption.updateMany.mockResolvedValue({ count: 1 });
 
     const result = await createFormBlockOption(

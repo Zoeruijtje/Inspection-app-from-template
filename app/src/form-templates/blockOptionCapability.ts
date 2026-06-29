@@ -34,3 +34,32 @@ export function requireOptionBackedCapability(
 
   return definition.optionCapability;
 }
+
+/**
+ * Throws if adding one more option would exceed the capability's maximumOptions.
+ * `maximumOptions: null` means unlimited.
+ */
+export function assertOptionCreateWithinCapability(
+  cap: OptionBackedCapability,
+  currentCount: number,
+): void {
+  if (cap.maximumOptions !== null && currentCount >= cap.maximumOptions) {
+    throw new OptionCapabilityError(
+      `Block already has the maximum of ${cap.maximumOptions} options.`,
+    );
+  }
+}
+
+/**
+ * Throws if deleting one option would drop below the capability's minimumOptions.
+ */
+export function assertOptionDeleteWithinCapability(
+  cap: OptionBackedCapability,
+  currentCount: number,
+): void {
+  if (currentCount <= cap.minimumOptions) {
+    throw new OptionCapabilityError(
+      `Block must have at least ${cap.minimumOptions} options.`,
+    );
+  }
+}

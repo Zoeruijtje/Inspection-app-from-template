@@ -260,17 +260,13 @@ describe("block operations", () => {
     expect(tx.formBlockDefinition.create).not.toHaveBeenCalled();
   });
 
-  it("enforces required policy and temporary single-select default boundary", async () => {
+  it("enforces required policy for display blocks", async () => {
     const tx = createTx();
     waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
       callback(tx),
     );
     tx.formTemplateVersion.findFirst.mockResolvedValue(activeDraftVersion());
     tx.formContainerDefinition.findFirst.mockResolvedValue(destinationContainer());
-    tx.formBlockDefinition.findFirst.mockResolvedValue(blockWithVersion({
-      blockType: "single_select",
-      config: { allowOther: false },
-    }));
 
     for (const blockType of ["heading", "paragraph"]) {
       await expect(
@@ -286,8 +282,17 @@ describe("block operations", () => {
         ),
       ).rejects.toMatchObject({ statusCode: 400 });
     }
+    expect(tx.formBlockDefinition.create).not.toHaveBeenCalled();
+  });
 
+  it("allows required for input block types", async () => {
     for (const blockType of ["short_text", "single_select"]) {
+      const tx = createTx();
+      waspServerMock.prisma.$transaction.mockImplementationOnce(
+        async (callback) => callback(tx),
+      );
+      tx.formTemplateVersion.findFirst.mockResolvedValue(activeDraftVersion());
+      tx.formContainerDefinition.findFirst.mockResolvedValue(destinationContainer());
       tx.formBlockDefinition.findMany.mockResolvedValue([]);
       tx.formBlockDefinition.create.mockResolvedValue(blockRecord({
         id: `${blockType}-id`,
@@ -315,6 +320,15 @@ describe("block operations", () => {
         ),
       ).resolves.toMatchObject({ block: { required: true } });
     }
+  });
+
+  it("rejects create of option-backed block with a default value before options exist", async () => {
+    const tx = createTx();
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
+      callback(tx),
+    );
+    tx.formTemplateVersion.findFirst.mockResolvedValue(activeDraftVersion());
+    tx.formContainerDefinition.findFirst.mockResolvedValue(destinationContainer());
 
     await expect(
       createFormBlock(
@@ -328,15 +342,141 @@ describe("block operations", () => {
         { user: { id: "user-1" } } as never,
       ),
     ).rejects.toMatchObject({ statusCode: 400 });
+    expect(tx.formBlockDefinition.create).not.toHaveBeenCalled();
+  });
+
+  it("accepts update of single_select with a default value matching a persisted option", async () => {
+    const tx = createTx();
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
+      callback(tx),
+    );
+    tx.formBlockDefinition.findFirst.mockResolvedValue(blockWithVersion({
+      blockType: "single_select",
+      config: { allowOther: false },
+    }));
+    tx.formBlockOption.findFirst.mockResolvedValue({
+      id: "opt-1",
+      value: "opt-a",
+    });
+    tx.formBlockDefinition.update.mockResolvedValue(blockRecord({
+      blockType: "single_select",
+      config: { allowOther: false, defaultValue: "opt-a" },
+    }));
+
+    const result = await updateFormBlock(
+      {
+        blockId: BLOCK_ID,
+        config: { allowOther: false, defaultValue: "opt-a" },
+      },
+      { user: { id: "user-1" } } as never,
+    );
+
+    expect(tx.formBlockOption.findFirst).toHaveBeenCalledWith({
+      where: { blockId: BLOCK_ID, value: "opt-a" },
+      select: { id: true, value: true },
+    });
+    expect(result.config).toEqual({ allowOther: false, defaultValue: "opt-a" });
+  });
+
+  it("rejects update with a default value that does not match any option in the block", async () => {
+    const tx = createTx();
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
+      callback(tx),
+    );
+    tx.formBlockDefinition.findFirst.mockResolvedValue(blockWithVersion({
+      blockType: "single_select",
+      config: { allowOther: false },
+    }));
+    tx.formBlockOption.findFirst.mockResolvedValue(null);
+
     await expect(
       updateFormBlock(
         {
           blockId: BLOCK_ID,
-          config: { allowOther: false, defaultValue: "a" },
+          config: { allowOther: false, defaultValue: "nonexistent" },
         },
         { user: { id: "user-1" } } as never,
       ),
     ).rejects.toMatchObject({ statusCode: 400 });
+    expect(tx.formBlockOption.findFirst).toHaveBeenCalledWith({
+      where: { blockId: BLOCK_ID, value: "nonexistent" },
+      select: { id: true, value: true },
+    });
+    expect(tx.formBlockDefinition.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects update where default value matches an option from a different block", async () => {
+    const tx = createTx();
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
+      callback(tx),
+    );
+    tx.formBlockDefinition.findFirst.mockResolvedValue(blockWithVersion({
+      blockType: "single_select",
+      config: { allowOther: false },
+    }));
+    // The option lookup is scoped to the block, so it returns null
+    // even if the value exists in another block.
+    tx.formBlockOption.findFirst.mockResolvedValue(null);
+
+    await expect(
+      updateFormBlock(
+        {
+          blockId: BLOCK_ID,
+          config: { allowOther: false, defaultValue: "value-in-another-block" },
+        },
+        { user: { id: "user-1" } } as never,
+      ),
+    ).rejects.toMatchObject({ statusCode: 400 });
+  });
+
+  it("clears an existing default when replacement config omits defaultValue", async () => {
+    const tx = createTx();
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
+      callback(tx),
+    );
+    tx.formBlockDefinition.findFirst.mockResolvedValue(blockWithVersion({
+      blockType: "single_select",
+      config: { allowOther: false, defaultValue: "opt-a" },
+    }));
+    tx.formBlockDefinition.update.mockResolvedValue(blockRecord({
+      blockType: "single_select",
+      config: { allowOther: false },
+    }));
+
+    const result = await updateFormBlock(
+      {
+        blockId: BLOCK_ID,
+        config: { allowOther: false },
+      },
+      { user: { id: "user-1" } } as never,
+    );
+
+    // No option lookup needed when defaultValue is omitted
+    expect(tx.formBlockOption.findFirst).not.toHaveBeenCalled();
+    expect(result.config).toEqual({ allowOther: false });
+  });
+
+  it("does not query options when update does not supply config", async () => {
+    const tx = createTx();
+    waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
+      callback(tx),
+    );
+    tx.formBlockDefinition.findFirst.mockResolvedValue(blockWithVersion({
+      blockType: "single_select",
+      config: { allowOther: false, defaultValue: "opt-a" },
+    }));
+    tx.formBlockDefinition.update.mockResolvedValue(blockRecord({
+      blockType: "single_select",
+      label: "Renamed",
+      config: { allowOther: false, defaultValue: "opt-a" },
+    }));
+
+    await updateFormBlock(
+      { blockId: BLOCK_ID, label: "Renamed" },
+      { user: { id: "user-1" } } as never,
+    );
+
+    expect(tx.formBlockOption.findFirst).not.toHaveBeenCalled();
   });
 
   it("updates only label, required, and config while preserving stable key and registry fields", async () => {

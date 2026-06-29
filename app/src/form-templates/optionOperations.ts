@@ -12,7 +12,7 @@ import {
 } from "../form-builder/registry";
 import { ensureArgsSchemaOrThrowHttpError } from "../server/validation";
 import { requireAuthenticatedUserId } from "./authorization";
-import { requireOptionBackedCapability, OptionCapabilityError } from "./blockOptionCapability";
+import { requireOptionBackedCapability, OptionCapabilityError, assertOptionCreateWithinCapability, assertOptionDeleteWithinCapability } from "./blockOptionCapability";
 import {
   assertActiveDraftVersion,
   ownedDefinitionVersionSelect,
@@ -163,12 +163,9 @@ export const createFormBlockOption: CreateFormBlockOption<
       const currentCount = orderedOptionIds.length;
 
       // Enforce maximum
-      if (cap.maximumOptions !== null && currentCount >= cap.maximumOptions) {
-        throw new HttpError(
-          400,
-          `Block already has the maximum of ${cap.maximumOptions} options.`,
-        );
-      }
+      withOptionCapabilityHttpError(() =>
+        assertOptionCreateWithinCapability(cap, currentCount),
+      );
 
       // Validate insertion position
       const insertionIndex = args.position ?? currentCount;
@@ -199,8 +196,21 @@ export const createFormBlockOption: CreateFormBlockOption<
       );
       await normalizeOptionSortOrders(tx, block.id, finalOrderedIds);
 
+      // Re-read the option post-normalization to return the authoritative sortOrder
+      const confirmed = await tx.formBlockOption.findUnique({
+        where: {
+          id: created.id,
+          blockId: block.id,
+        },
+        select: safeOptionSelect,
+      });
+
+      if (!confirmed) {
+        throw new HttpError(409, "Form block option creation could not be confirmed.");
+      }
+
       return {
-        option: mapSafeOption(created),
+        option: mapSafeOption(confirmed),
         orderedOptionIds: finalOrderedIds,
       };
     },
@@ -390,12 +400,9 @@ export const deleteFormBlockOption: DeleteFormBlockOption<
       const currentCount = orderedOptionIds.length;
 
       // Enforce minimum
-      if (currentCount <= cap.minimumOptions) {
-        throw new HttpError(
-          400,
-          `Block must have at least ${cap.minimumOptions} options.`,
-        );
-      }
+      withOptionCapabilityHttpError(() =>
+        assertOptionDeleteWithinCapability(cap, currentCount),
+      );
 
       // Check if this is the current default
       const parsedConfig = parseStoredConfig(blockDefinition, block.config);
