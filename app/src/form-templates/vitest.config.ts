@@ -17,6 +17,7 @@ export default defineConfig({
       "src/form-templates/containerOperations.test.ts",
       "src/form-templates/blockValidation.test.ts",
       "src/form-templates/blockCompatibility.test.ts",
+      "src/form-templates/blockOptionCapability.test.ts",
       "src/form-templates/blockStableKey.test.ts",
       "src/form-templates/blockOperations.test.ts",
     ],

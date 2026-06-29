@@ -319,7 +319,38 @@ Deletion: Cascade to block options.
 | color     | String?             | Optional                                                          | Color for visual distinction  |
 | score     | Float?              | Optional                                                          | Score/weight for calculations |
 
-Indexes: `@@index([blockId])`
+Indexes: `@@index([blockId])`, `@@unique([blockId, value])`
+
+**Uniqueness invariant:** Within one block, each option value is unique. The same value may exist in a different block. This database constraint is enforced because option values are referenced by block configuration, responses, conditions, and reports.
+
+### `BlockTypeDefinition.optionCapability`
+
+Every block type must declare whether it supports ordered choices via a discriminated union:
+
+```typescript
+export type BlockOptionCapability =
+  | { kind: "none" }
+  | {
+      kind: "options";
+      selectionMode: "single";
+      defaultValueConfigKey: "defaultValue";
+      minimumOptions: number;
+      maximumOptions: number | null;
+    };
+```
+
+`optionCapability` is a required field on `BlockTypeDefinition`. The discriminated contract is extensible enough to carry option-specific behavior without checking block type names throughout the application.
+
+**Production baseline declarations (Phase 3A-4C2A):**
+
+| Block type      | Capability | Details |
+| --------------- | ---------- | ------- |
+| `heading`       | `{ kind: "none" }` | Not option-backed |
+| `paragraph`     | `{ kind: "none" }` | Not option-backed |
+| `short_text`    | `{ kind: "none" }` | Not option-backed |
+| `single_select` | `{ kind: "options", selectionMode: "single", defaultValueConfigKey: "defaultValue", minimumOptions: 0, maximumOptions: null }` | Option-backed; draft minimum is 0 (block creatable before options added) |
+
+Catalogue presence does not imply option support. Option support is declared solely by `optionCapability`.
 
 ---
 
@@ -468,7 +499,7 @@ On publish, run full template validation:
 
 ### Adding a new block type
 
-1. Define the BlockTypeDefinition in the registry (all 10 required properties)
+1. Define the BlockTypeDefinition in the registry (all 11 required properties, including `optionCapability`)
 2. Register it: `registerBlockType(newBlockDef)`
 3. No schema changes required (config stored as JSON in existing FormBlockDefinition table)
 4. New block type immediately available in the builder palette

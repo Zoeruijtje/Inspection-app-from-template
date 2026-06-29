@@ -47,18 +47,21 @@ A page may remain a separate top-level page registry if preferable, but it must 
 
 ### Leaf block registry
 
-Leaf blocks are persisted as `FormBlockDefinition` rows that reference a real `FormContainerDefinition.containerId`. Each leaf block type must be registered in the controlled block registry with the following 10 required properties:
+Leaf blocks are persisted as `FormBlockDefinition` rows that reference a real `FormContainerDefinition.containerId`. Each leaf block type must be registered in the controlled block registry with the following 11 required properties:
 
 1. **typeId** — stable unique string identifier (never changes)
 2. **blockImplementationVersion** — runtime behavior version (incremented on component logic changes)
 3. **configSchemaVersion** — version of the Zod schema validating config JSON
 4. **configSchema** — ZodSchema for configuration validation
 5. **responseSchema** — ZodSchema for submitted response data
-6. **builderPreviewComponent** — rendered in the builder canvas
-7. **runtimeComponent** — rendered in the form-filling runtime
-8. **reportComponent** — rendered in reports (HTML preview and PDF)
-9. **pdfPaginationContract** — PDF pagination behavior declaration
-10. **configMigrationStrategy** — function or null for migrating old configs
+6. **optionCapability** — discriminated union declaring whether the block owns ordered choices and what selection-mode/option-count rules apply
+7. **builderPreviewComponent** — rendered in the builder canvas
+8. **runtimeComponent** — rendered in the form-filling runtime
+9. **reportComponent** — rendered in reports (HTML preview and PDF)
+10. **pdfPaginationContract** — PDF pagination behavior declaration
+11. **configMigrationStrategy** — function or null for migrating old configs
+
+**Option support:** Catalogue presence does not imply option support. Option support is declared by `optionCapability` on the registry entry, not inferred from `typeId` or category. `single_select` is currently the only option-backed production block (`kind: "options", selectionMode: "single"`). All other baseline blocks are option-disabled (`kind: "none"`).
 
 Each leaf block entry below specifies: typeId, label, category, description, phase, config properties, response type, supported containers, repeatable flag, and pdfPaginationContract.
 

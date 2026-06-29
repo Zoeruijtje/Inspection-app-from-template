@@ -11,6 +11,7 @@ export {
   type PaginationContract,
   type ContainerTypeDefinition,
   type BlockTypeDefinition,
+  type BlockOptionCapability,
   type BlockCategory,
   type ZodSchemaUnknown,
   type ConfigMigrationFn,

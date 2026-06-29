@@ -350,4 +350,5 @@ model FormBlockOption {
   score                     Float?
 
   @@index([blockId])
+  @@unique([blockId, value])
 }

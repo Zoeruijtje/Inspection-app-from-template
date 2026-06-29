@@ -91,6 +91,7 @@ function blockDef(overrides: Partial<BlockTypeDefinition>): BlockTypeDefinition 
     configSchemaVersion: 1,
     configSchema: {} as BlockTypeDefinition["configSchema"],
     responseSchema: {} as BlockTypeDefinition["responseSchema"],
+    optionCapability: { kind: "none" },
     builderPreviewComponent: (() => null) as BlockTypeDefinition["builderPreviewComponent"],
     runtimeComponent: (() => null) as BlockTypeDefinition["runtimeComponent"],
     reportComponent: (() => null) as BlockTypeDefinition["reportComponent"],

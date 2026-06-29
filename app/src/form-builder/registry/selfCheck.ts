@@ -109,6 +109,41 @@ describe("contract completeness", () => {
       expect(def.allowedContainerTypes).toEqual(["section"]);
     }
   });
+
+  it("6e. every block definition has optionCapability", () => {
+    for (const def of blockRegistry.list()) {
+      expect(
+        def.optionCapability,
+        `block "${def.typeId}" must declare optionCapability`,
+      ).toBeDefined();
+      expect(
+        typeof def.optionCapability.kind,
+        `block "${def.typeId}" optionCapability.kind must be a string`,
+      ).toBe("string");
+    }
+  });
+
+  it("6f. optionCapability is listed in blockTypeDefinitionKeys", () => {
+    expect(blockTypeDefinitionKeys).toContain("optionCapability");
+  });
+
+  it("6g. heading, paragraph, and short_text are option-disabled", () => {
+    for (const id of ["heading", "paragraph", "short_text"] as const) {
+      const def = blockRegistry.require(id);
+      expect(def.optionCapability.kind).toBe("none");
+    }
+  });
+
+  it("6h. single_select is option-backed", () => {
+    const def = blockRegistry.require("single_select");
+    expect(def.optionCapability.kind).toBe("options");
+    if (def.optionCapability.kind === "options") {
+      expect(def.optionCapability.selectionMode).toBe("single");
+      expect(def.optionCapability.defaultValueConfigKey).toBe("defaultValue");
+      expect(def.optionCapability.minimumOptions).toBe(0);
+      expect(def.optionCapability.maximumOptions).toBeNull();
+    }
+  });
 });
 
 describe("config validation — valid samples pass", () => {

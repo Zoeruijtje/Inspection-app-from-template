@@ -50,7 +50,20 @@ export type BlockCategory =
   | "Media"
   | "Inspection/Workflow";
 
+export type BlockOptionCapability =
+  | {
+      kind: "none";
+    }
+  | {
+      kind: "options";
+      selectionMode: "single";
+      defaultValueConfigKey: "defaultValue";
+      minimumOptions: number;
+      maximumOptions: number | null;
+    };
+
 export interface BlockTypeDefinition {
+  optionCapability: BlockOptionCapability;
   typeId: string;
   label: string;
   category: BlockCategory;
@@ -95,6 +108,7 @@ export const blockTypeDefinitionKeys: readonly (keyof BlockTypeDefinition)[] = [
   "configSchemaVersion",
   "configSchema",
   "responseSchema",
+  "optionCapability",
   "builderPreviewComponent",
   "runtimeComponent",
   "reportComponent",

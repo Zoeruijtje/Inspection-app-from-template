@@ -17,16 +17,30 @@
 - Phase 3A-4A definition-level authorization, read-only normalized definition tree loading, page CRUD, and page ordering normalization are implemented.
 - Phase 3A-4B authenticated root container CRUD, parent compatibility checks, cross-version prevention, generic cycle prevention helpers, and source/destination container ordering normalization are implemented.
 - Phase 3A-4C1 authenticated baseline block CRUD, registry validation, immutable stable keys, block/container compatibility, and source/destination block ordering normalization are implemented.
+- Phase 3A-4C2A option capability contract, registry declarations, pure capability helpers, and database-enforced per-block option-value uniqueness are implemented.
 
 ## Next milestone
 
-Phase 3A-4C2 — Option Capability Contract, Option CRUD, and Contextual Choice Validation. Do not start publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
+Phase 3A-4C2B — Option CRUD, Ordering, and Contextual Default Integrity. Do not start publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
 
 ## In progress
 
 - Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
 
 ## Completed
+
+- Phase 3A-4C2A option capability contract and database value uniqueness completed 2026-06-29.
+
+- Added an explicit controlled `BlockOptionCapability` discriminated union (`kind: "none"` | `kind: "options"` with `selectionMode`, `defaultValueConfigKey`, `minimumOptions`, `maximumOptions`) as a required field on `BlockTypeDefinition`.
+- Configured `single_select` as option-backed (`selectionMode: "single"`, `defaultValueConfigKey: "defaultValue"`, `minimumOptions: 0`, `maximumOptions: null`). Draft minimum is 0 so the block is creatable before options are added.
+- Configured `heading`, `paragraph`, and `short_text` as option-disabled (`kind: "none"`).
+- Added pure capability helpers `isOptionBackedBlock` and `requireOptionBackedCapability` with a dedicated `OptionCapabilityError` domain error that does not depend on `HttpError`.
+- Added database-level `@@unique([blockId, value])` on `FormBlockOption`. Within one block, each option value is unique; the same value may exist in a different block. No global uniqueness was introduced.
+- Created migration `20260629120000_add_form_block_option_value_unique` with exactly one narrow SQL operation: `CREATE UNIQUE INDEX "FormBlockOption_blockId_value_key" ON "FormBlockOption"("blockId", "value")`.
+- Added focused Vitest tests for registry contract completeness (every block has `optionCapability`, `blockTypeDefinitionKeys` contains the field, per-block declarations), capability helpers (synthetic definitions, positive/negative detection, assertion behavior, dedicated error type), and existing test compatibility.
+- Checks run: form-template tests (107 passed), registry tests (38 passed), `git diff --check` passed, `make check` passed, `npx prisma validate` passed, `wasp start` compiled successfully.
+- Option CRUD, contextual single-select default validation, `single_select.defaultValue` enablement, builder UI, drag-and-drop, runtime execution, publishing, reports, and PDF work remain unimplemented.
+- No option actions, block-operation behavior changes, Wasp actions, UI, runtime, or publishing code was added.
 
 - Phase 3A-4C1 block operations completed 2026-06-29.
 

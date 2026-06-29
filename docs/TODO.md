@@ -180,7 +180,15 @@
 - [ ] Phase 3A-4D authenticated option definition CRUD
 - [x] Phase 3A-4C1 block registry validation for definition writes
 - [x] Phase 3A-4C1 block registry validation, stable-key generation, and block ordering normalization
-- [ ] Phase 3A-4C option registry/context validation and option ordering normalization
+- [x] Phase 3A-4C2A option capability contract (BlockOptionCapability discriminated union)
+- [x] Phase 3A-4C2A registry declarations for all four baseline blocks
+- [x] Phase 3A-4C2A pure option capability helpers (isOptionBackedBlock, requireOptionBackedCapability)
+- [x] Phase 3A-4C2A database-enforced per-block option-value uniqueness (@@unique([blockId, value]))
+- [ ] Phase 3A-4C2B option create/update/move/delete operations
+- [ ] Phase 3A-4C2B option label/value validation and duplicate handling
+- [ ] Phase 3A-4C2B option contiguous ordering normalization
+- [ ] Phase 3A-4C2B contextual single-select defaultValue validation
+- [ ] Phase 3A-4C2B atomic default update/delete handling
 
 ## Phase 3B — Basic template management
 
