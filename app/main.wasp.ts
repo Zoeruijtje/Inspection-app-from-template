@@ -18,6 +18,7 @@ import { formTemplateContainerSpec } from "./src/form-templates/containerOperati
 import { formTemplateOptionSpec } from "./src/form-templates/optionOperations.wasp";
 import { formTemplatesSpec } from "./src/form-templates/formTemplates.wasp";
 import { formTemplateDefinitionSpec } from "./src/form-templates/definitionOperations.wasp";
+import { formTemplateVersionValidationSpec } from "./src/form-templates/versionValidationOperations.wasp";
 import { inspectionsSpec } from "./src/inspections/inspections.wasp";
 import { paymentSpec } from "./src/payment/payment.wasp";
 import { projectsSpec } from "./src/projects/projects.wasp";
@@ -61,6 +62,7 @@ export default app({
     formTemplateContainerSpec,
     formTemplateBlockSpec,
     formTemplateOptionSpec,
+    formTemplateVersionValidationSpec,
     demoAiAppSpec,
     paymentSpec,
     fileUploadSpec,

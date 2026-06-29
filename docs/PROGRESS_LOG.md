@@ -30,6 +30,24 @@ Phase 3A-4D or Phase 3A-4E — Whole-draft definition validation, version clonin
 
 ## Completed
 
+- Phase 3A-4D1 whole-draft validation and canonical snapshot foundation completed 2026-06-29.
+
+- Implemented reusable transaction-scoped normalized definition-row loader (`definitionRows.ts`) that loads one authoritative version's pages, containers, blocks, and options through the supplied Prisma tx client with deterministic `sortOrder ASC, id ASC` ordering. No global Prisma reads. Returns raw rows, not an assembled tree.
+- Implemented pure ordering validator (`versionOrdering.ts`) that detects gaps, duplicates, negative values, non-integer values, and inconsistent ordering in any scope. Used independently for pages, root containers, child containers, blocks, and options.
+- Implemented pure whole-draft validation (`versionValidation.ts`) covering: version-level completeness (pages, blocks), page integrity (version mismatch, ordering, root container presence), container ownership and parent integrity (XOR, missing refs, self-parent, cycles, disconnected subgraphs, type registration, root placement, parent-child compatibility, config validation, ordering), block integrity (missing container, version mismatch, type registration, block/container compatibility, config validation, implementation/schema version, required policy, stable key presence/uniqueness, ordering), option integrity (missing block, option-on-non-backed-block, label/value/color/score validation, value uniqueness, ordering, publication minimum, maximum, options-on-non-option-block), contextual default integrity (default-option lookup via registry capability).
+- Implemented recursive canonical JSON value handling (`canonicalizeJsonValue`): null/string/boolean/finite-number pass through; arrays preserve order and recursively canonicalize; object keys sorted lexicographically; non-finite numbers, undefined, dates, and class instances throw `CanonicalizationError`.
+- Implemented canonical snapshot V1 builder (`buildCanonicalSnapshotV1`) with exact shape: `schemaVersion: 1`, `templateId`, `versionId`, `versionNumber`, `pages[]` with recursive `containers[]` → `blocks[]` → `options[]`. All arrays sorted by `sortOrder` then `id`. No userId, status, timestamps, or snapshot metadata fields included. Throws `SnapshotBuildError` on structural inconsistency.
+- Implemented deterministic serialization (`serializeCanonicalSnapshot`) using `JSON.stringify` — safe because objects are constructed in explicit field order and nested JSON objects are recursively key-sorted.
+- Implemented SHA-256 hashing (`hashCanonicalSnapshot`) using Node's `node:crypto` — produces exactly 64 lowercase hexadecimal characters. No new dependencies.
+- Implemented authenticated public validation query `validateFormTemplateVersion` with strict Zod input (UUID, unknown-property rejection). Unauthenticated → 401; unowned version → 404; archived template/non-draft version → 409. Ownership resolution, row loading, validation, snapshot building, and hashing all run in one `RepeatableRead` transaction using tx.
+- Safe result DTO (`FormTemplateVersionValidationResult`) includes `versionId`, `valid`, `issues[]` (sorted by `path`, `code`, `message`), `counts` (pages/containers/blocks/options), `snapshotSchemaVersion: 1`, and `snapshotHash` (null when invalid). No user IDs, template relations, raw Prisma records, registry definitions, or snapshot persistence fields.
+- Added Wasp spec (`versionValidationOperations.wasp.ts`) declaring `validateFormTemplateVersion` as `query` with `auth: true` and all six form-template entities. Registered in `app/main.wasp.ts`.
+- Added focused Vitest coverage: version ordering (11 tests), canonical snapshot + JSON + hashing (29 tests), whole-draft validation (46 tests), query input/result DTO (11 tests). Total new tests: 97.
+- All existing tests remain enabled and pass: form-template (334 tests, unchanged count), registry (38 tests).
+- Checks run: `git diff --check` passed, `make check` passed, `npx prisma validate` passed, `wasp start` compiled successfully (SDK built; DB connection not available locally).
+- Restricted diff empty: no schema, migration, registry, client, property, inspection, or spike changes.
+- Builder UI, drag-and-drop, runtime forms, publishing, version cloning, snapshot persistence, canonical snapshot creation inside publish, status transitions, superseding, reports, and PDF work remain deferred.
+
 - Phase 3A-4C2B option CRUD, ordering, and contextual default integrity completed 2026-06-29.
 
 - Implemented authenticated `createFormBlockOption`, `updateFormBlockOption`, `moveFormBlockOption`, and `deleteFormBlockOption` actions for active owned draft versions only.

@@ -189,6 +189,14 @@
 - [x] Phase 3A-4C2B option contiguous ordering normalization
 - [x] Phase 3A-4C2B contextual single-select defaultValue validation
 - [x] Phase 3A-4C2B atomic default update/delete handling
+- [x] Phase 3A-4D1 reusable transaction-scoped definition-row loader
+- [x] Phase 3A-4D1 pure ordering validator (gaps, duplicates, negatives, non-integers)
+- [x] Phase 3A-4D1 whole-draft definition validation (pages, containers, blocks, options, defaults)
+- [x] Phase 3A-4D1 recursive canonical JSON value handling
+- [x] Phase 3A-4D1 canonical snapshot V1 builder (deterministic field order, sorted arrays)
+- [x] Phase 3A-4D1 SHA-256 snapshot hashing (node:crypto, no deps)
+- [x] Phase 3A-4D1 authenticated public validation query (RepeatableRead, safe DTO)
+- [ ] Phase 3A-4D2 publish transaction with full validation, snapshot persistence, and superseding
 
 ## Phase 3B — Basic template management
 
