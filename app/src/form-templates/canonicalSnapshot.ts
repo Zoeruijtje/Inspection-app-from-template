@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Prisma } from "@prisma/client";
+import { compareStrings } from "./definitionOrdering";
 import type {
   DefinitionBlockRow,
   DefinitionContainerRow,
@@ -154,6 +155,139 @@ export class SnapshotBuildError extends Error {
 }
 
 /**
+ * Preflight: reject structurally orphaned rows before snapshot assembly.
+ *
+ * Throws SnapshotBuildError on:
+ * - duplicate IDs (page, container, block, option)
+ * - cross-version rows
+ * - containers with neither/both pageId and parentContainerId
+ * - missing page/parent references
+ * - self-parenting
+ * - container cycles
+ * - disconnected containers
+ * - blocks referencing missing containers
+ * - options referencing missing blocks
+ */
+export function assertSnapshotRowsStructurallyBuildable(
+  rows: DefinitionRows,
+): void {
+  const versionId = rows.version.id;
+  const pageIds = new Set<string>();
+  const containerIds = new Set<string>();
+  const blockIds = new Set<string>();
+  const optionIds = new Set<string>();
+
+  // Unique IDs
+  for (const p of rows.pages) {
+    if (pageIds.has(p.id)) throw new SnapshotBuildError(`Duplicate page id: ${p.id}`);
+    pageIds.add(p.id);
+    if (p.templateVersionId !== versionId)
+      throw new SnapshotBuildError(`Page ${p.id} belongs to a different version.`);
+  }
+
+  for (const c of rows.containers) {
+    if (containerIds.has(c.id)) throw new SnapshotBuildError(`Duplicate container id: ${c.id}`);
+    containerIds.add(c.id);
+    if (c.templateVersionId !== versionId)
+      throw new SnapshotBuildError(`Container ${c.id} belongs to a different version.`);
+
+    // XOR: exactly one of pageId or parentContainerId
+    const hasPage = c.pageId !== null;
+    const hasParent = c.parentContainerId !== null;
+    if (hasPage === hasParent)
+      throw new SnapshotBuildError(
+        `Container ${c.id} must have exactly one of pageId or parentContainerId.`,
+      );
+
+    // Self-parent
+    if (c.parentContainerId === c.id)
+      throw new SnapshotBuildError(`Container ${c.id} references itself as parent.`);
+  }
+
+  for (const b of rows.blocks) {
+    if (blockIds.has(b.id)) throw new SnapshotBuildError(`Duplicate block id: ${b.id}`);
+    blockIds.add(b.id);
+    if (b.templateVersionId !== versionId)
+      throw new SnapshotBuildError(`Block ${b.id} belongs to a different version.`);
+  }
+
+  for (const o of rows.options) {
+    if (optionIds.has(o.id)) throw new SnapshotBuildError(`Duplicate option id: ${o.id}`);
+    optionIds.add(o.id);
+  }
+
+  // Reference integrity
+  for (const c of rows.containers) {
+    if (c.pageId !== null && !pageIds.has(c.pageId))
+      throw new SnapshotBuildError(`Container ${c.id} references missing page ${c.pageId}.`);
+    if (c.parentContainerId !== null && !containerIds.has(c.parentContainerId))
+      throw new SnapshotBuildError(`Container ${c.id} references missing parent ${c.parentContainerId}.`);
+  }
+
+  // Cycle detection over resolved parent references only
+  const parentOf = new Map<string, string>();
+  for (const c of rows.containers) {
+    if (c.parentContainerId !== null && c.parentContainerId !== c.id && containerIds.has(c.parentContainerId)) {
+      parentOf.set(c.id, c.parentContainerId);
+    }
+  }
+
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+
+  const visit = (id: string): void => {
+    if (visited.has(id)) return;
+    if (visiting.has(id))
+      throw new SnapshotBuildError(`Container ancestry cycle detected at ${id}.`);
+    visiting.add(id);
+    const parentId = parentOf.get(id);
+    if (parentId !== undefined) visit(parentId);
+    visiting.delete(id);
+    visited.add(id);
+  };
+
+  for (const id of containerIds) visit(id);
+
+  // Disconnected: every container must be reachable from a page root
+  const rootIds = new Set(
+    rows.containers.filter((c) => c.pageId !== null).map((c) => c.id),
+  );
+  const childrenOf = new Map<string, string[]>();
+  for (const c of rows.containers) {
+    if (c.parentContainerId !== null && containerIds.has(c.parentContainerId)) {
+      const list = childrenOf.get(c.parentContainerId) ?? [];
+      list.push(c.id);
+      childrenOf.set(c.parentContainerId, list);
+    }
+  }
+
+  const reachable = new Set<string>();
+  const walk = (id: string): void => {
+    if (reachable.has(id)) return;
+    reachable.add(id);
+    for (const child of childrenOf.get(id) ?? []) walk(child);
+  };
+  for (const rootId of rootIds) walk(rootId);
+
+  for (const id of containerIds) {
+    if (!reachable.has(id))
+      throw new SnapshotBuildError(`Container ${id} is not reachable from any page root.`);
+  }
+
+  // Block → container references
+  for (const b of rows.blocks) {
+    if (!containerIds.has(b.containerId))
+      throw new SnapshotBuildError(`Block ${b.id} references missing container ${b.containerId}.`);
+  }
+
+  // Option → block references
+  for (const o of rows.options) {
+    if (!blockIds.has(o.blockId))
+      throw new SnapshotBuildError(`Option ${o.id} references missing block ${o.blockId}.`);
+  }
+}
+
+/**
  * Build a canonical V1 snapshot from validated definition rows.
  *
  * Must only be called after validation succeeds. If called with structurally
@@ -162,20 +296,17 @@ export class SnapshotBuildError extends Error {
 export function buildCanonicalSnapshotV1(
   rows: DefinitionRows,
 ): CanonicalSnapshotV1 {
+  // Reject structurally orphaned rows before building
+  assertSnapshotRowsStructurallyBuildable(rows);
+
   // Build lookup maps
   const containerMap = new Map<string, DefinitionContainerRow>();
   for (const c of rows.containers) {
-    if (containerMap.has(c.id)) {
-      throw new SnapshotBuildError(`Duplicate container id: ${c.id}`);
-    }
     containerMap.set(c.id, c);
   }
 
   const blockMap = new Map<string, DefinitionBlockRow>();
   for (const b of rows.blocks) {
-    if (blockMap.has(b.id)) {
-      throw new SnapshotBuildError(`Duplicate block id: ${b.id}`);
-    }
     blockMap.set(b.id, b);
   }
 
@@ -186,14 +317,14 @@ export function buildCanonicalSnapshotV1(
     optionMap.set(o.blockId, list);
   }
 
-  // Deterministic sort helper
+  // Deterministic sort helper — never uses localeCompare
   const sortById = <T extends { id: string; sortOrder: number }>(
     entries: T[],
   ): T[] =>
     [...entries].sort((a, b) => {
       const delta = a.sortOrder - b.sortOrder;
       if (delta !== 0) return delta;
-      return a.id.localeCompare(b.id);
+      return compareStrings(a.id, b.id);
     });
 
   // Build canonical options for a block

@@ -18,23 +18,24 @@ import {
   isNestedContainerPlacementAllowed,
   isRootContainerPlacementAllowed,
 } from "./containerCompatibility";
-import {
-  assertContainerGraphHasNoCycles,
-  type ContainerGraphRow,
-} from "./containerGraph";
+import { isDisplayOnlyBaselineBlockType } from "./blockRequiredPolicyRules";
 import {
   isOptionBackedBlock,
   type OptionBackedCapability,
 } from "./blockOptionCapability";
-// Inline display-only check to avoid importing wasp/server (HttpError) in pure validation.
-const displayOnlyBlockTypes = new Set(["heading", "paragraph"]);
-function isDisplayOnlyBaselineBlockType(blockType: string): boolean {
-  return displayOnlyBlockTypes.has(blockType);
-}
+import { compareStrings } from "./definitionOrdering";
 import {
   validateScopeOrder,
   type SortableEntry,
 } from "./versionOrdering";
+
+// ── Stable key format ──────────────────────────────────────────────────
+
+const STABLE_KEY_PATTERN = /^blk_[0-9a-f]{32}$/;
+
+function isValidStableKey(key: string): boolean {
+  return STABLE_KEY_PATTERN.test(key);
+}
 
 // ── Validation issue DTO ───────────────────────────────────────────────
 
@@ -206,19 +207,44 @@ export function validateVersionDefinition(
     }
   }
 
-  // Cycles
-  try {
-    const graphRows: ContainerGraphRow[] = rows.containers.map((c) => ({
-      id: c.id,
-      parentContainerId: c.parentContainerId,
-    }));
-    assertContainerGraphHasNoCycles(graphRows);
-  } catch (err: unknown) {
-    issues.push({
-      code: "CONTAINER_CYCLE",
-      path: "containers",
-      message: err instanceof Error ? err.message : "Container cycle detected.",
-    });
+  // Cycles — only check over resolved parent references that are not self-references.
+  // Missing parents produce CONTAINER_PARENT_NOT_FOUND (already reported).
+  // Self-parents produce CONTAINER_SELF_PARENT (already reported).
+  {
+    const resolvedParentOf = new Map<string, string>();
+    for (const c of rows.containers) {
+      if (
+        c.parentContainerId !== null &&
+        c.parentContainerId !== c.id &&
+        containerMap.has(c.parentContainerId)
+      ) {
+        resolvedParentOf.set(c.id, c.parentContainerId);
+      }
+    }
+
+    const cycleVisiting = new Set<string>();
+    const cycleVisited = new Set<string>();
+
+    const visitCycle = (id: string): void => {
+      if (cycleVisited.has(id)) return;
+      if (cycleVisiting.has(id)) {
+        issues.push({
+          code: "CONTAINER_CYCLE",
+          path: `containers.${id}`,
+          message: `Container ancestry cycle detected at ${id}.`,
+        });
+        return;
+      }
+      cycleVisiting.add(id);
+      const parentId = resolvedParentOf.get(id);
+      if (parentId !== undefined) visitCycle(parentId);
+      cycleVisiting.delete(id);
+      cycleVisited.add(id);
+    };
+
+    for (const c of rows.containers) {
+      visitCycle(c.id);
+    }
   }
 
   // Disconnected containers: every container must be reachable from a page root
@@ -229,7 +255,7 @@ export function validateVersionDefinition(
   );
 
   for (const c of rows.containers) {
-    if (c.parentContainerId !== null) {
+    if (c.parentContainerId !== null && containerMap.has(c.parentContainerId)) {
       const children = reachableChildren.get(c.parentContainerId) ?? [];
       children.push(c.id);
       reachableChildren.set(c.parentContainerId, children);
@@ -289,8 +315,8 @@ export function validateVersionDefinition(
       }
     }
 
-    // Config validation
-    const configResult = containerDef.configSchema.safeParse(c.config ?? {});
+    // Config validation — validate the actual persisted value (may be null)
+    const configResult = containerDef.configSchema.safeParse(c.config);
     if (!configResult.success) {
       issues.push({
         code: "CONTAINER_CONFIG_INVALID",
@@ -392,12 +418,12 @@ export function validateVersionDefinition(
       }
     }
 
-    // Stable key
-    if (!b.stableKey || b.stableKey.trim().length === 0) {
+    // Stable key — must match server-generated format blk_<32 lowercase hex>
+    if (!b.stableKey || !isValidStableKey(b.stableKey)) {
       issues.push({
         code: "BLOCK_STABLE_KEY_INVALID",
         path: `blocks.${b.id}`,
-        message: `Block ${b.id} has an invalid or missing stable key.`,
+        message: `Block ${b.id} has an invalid or missing stable key (expected blk_<32 lowercase hex>).`,
       });
     }
 
@@ -627,11 +653,11 @@ export function buildValidationResult(
 
 export function sortIssues(issues: ValidationIssue[]): ValidationIssue[] {
   return [...issues].sort((a, b) => {
-    const pathCmp = a.path.localeCompare(b.path);
+    const pathCmp = compareStrings(a.path, b.path);
     if (pathCmp !== 0) return pathCmp;
-    const codeCmp = a.code.localeCompare(b.code);
+    const codeCmp = compareStrings(a.code, b.code);
     if (codeCmp !== 0) return codeCmp;
-    return a.message.localeCompare(b.message);
+    return compareStrings(a.message, b.message);
   });
 }
 

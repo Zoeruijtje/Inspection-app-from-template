@@ -163,11 +163,13 @@ Strict Zod validation, UUID check, unknown properties rejected.
 6. Compute hash with `hashCanonicalSnapshot(snapshot)`.
 7. Serialize snapshot with `serializeCanonicalSnapshot(snapshot)`.
 8. Persist to version row:
-   - `snapshot = serializedSnapshot`
+   - `snapshot = snapshot` as `Prisma.InputJsonValue` (the canonical JSON object, not a serialized string)
    - `snapshotSchemaVersion = 1`
    - `snapshotHash = hash`
    - `status = PUBLISHED`
    - `publishedAt = new Date()`
+
+   `serializeCanonicalSnapshot(snapshot)` is the byte/string representation used for hashing and tests. It is not the value stored in the Prisma `Json` field.
 9. Within the same transaction, find the previous latest published version for the same template (status `PUBLISHED`, different id, ordered by `versionNumber DESC`) and update it to `SUPERSEDED`.
 10. Return the publish result DTO.
 
@@ -198,7 +200,25 @@ Do not return user IDs, raw template relations, raw Prisma records, the full sna
 
 ### 3. Concurrency
 
-Two concurrent publishes of the same draft should not both succeed. Use the Prisma transaction isolation level `RepeatableRead` and check the version status inside the transaction. If the version is no longer `DRAFT` by the time the transaction reads it, throw 409.
+Two concurrent publishes of the same draft must not both succeed. Requirements:
+
+1. Ownership and active-draft resolution must happen inside the transaction — no pre-check outside the transaction.
+2. Validation and snapshot creation happen inside the same transaction.
+3. The current-version status update must use a conditional update scoped by at least:
+   ```typescript
+   {
+     id: versionId,
+     templateId,
+     status: DRAFT,
+   }
+   ```
+4. `updateMany` result count must equal exactly 1. A count of 0 maps to HTTP 409.
+5. Known Prisma transaction serialization/write-conflict errors, including applicable `P2034` failures, map to HTTP 409 or are retried only by opening a completely new bounded transaction.
+6. No retry inside an already-aborted transaction.
+7. Previous published-version superseding is in the same transaction.
+8. Any current-version or previous-version conditional update failure rolls back the entire transaction.
+9. The persisted snapshot is the canonical JSON object (`Prisma.InputJsonValue`), not a serialized string.
+10. The hash is calculated from `serializeCanonicalSnapshot` — the deterministic serialized representation of that object.
 
 ### 4. Previous version superseding
 

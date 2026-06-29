@@ -805,3 +805,144 @@ describe("buildValidationResult", () => {
     expect(result.issues[1].path).toBe("blocks.b");
   });
 });
+
+// ── Cycle classification tests ─────────────────────────────────────────
+
+describe("validateVersionDefinition — cycle classification", () => {
+  it("missing parent produces CONTAINER_PARENT_NOT_FOUND, not CONTAINER_CYCLE", () => {
+    const rows: DefinitionRows = {
+      version: version(),
+      pages: [page()],
+      containers: [
+        container({ id: "root", pageId: "page-1" }),
+        container({
+          id: "child",
+          pageId: null,
+          parentContainerId: "nonexistent-parent",
+          sortOrder: 0,
+        }),
+      ],
+      blocks: [block()],
+      options: [],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "CONTAINER_PARENT_NOT_FOUND")).toBe(true);
+    expect(hasCode(issues, "CONTAINER_CYCLE")).toBe(false);
+  });
+
+  it("self-parent produces CONTAINER_SELF_PARENT, not CONTAINER_CYCLE", () => {
+    const rows: DefinitionRows = {
+      version: version(),
+      pages: [page()],
+      containers: [
+        container({
+          id: "self-c",
+          pageId: null,
+          parentContainerId: "self-c",
+        }),
+      ],
+      blocks: [block()],
+      options: [],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "CONTAINER_SELF_PARENT")).toBe(true);
+    expect(hasCode(issues, "CONTAINER_CYCLE")).toBe(false);
+  });
+
+  it("actual two-node cycle produces CONTAINER_CYCLE", () => {
+    const rows: DefinitionRows = {
+      version: version(),
+      pages: [page()],
+      containers: [
+        container({
+          id: "c1",
+          pageId: null,
+          parentContainerId: "c2",
+        }),
+        container({
+          id: "c2",
+          pageId: null,
+          parentContainerId: "c1",
+          sortOrder: 0,
+        }),
+      ],
+      blocks: [block()],
+      options: [],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "CONTAINER_CYCLE")).toBe(true);
+  });
+});
+
+// ── Stable key format tests ────────────────────────────────────────────
+
+describe("validateVersionDefinition — stable key format", () => {
+  it("empty key is invalid", () => {
+    const rows: DefinitionRows = {
+      ...minimalValidRows(),
+      blocks: [block({ stableKey: "" })],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "BLOCK_STABLE_KEY_INVALID")).toBe(true);
+  });
+
+  it("malformed prefix is invalid", () => {
+    const rows: DefinitionRows = {
+      ...minimalValidRows(),
+      blocks: [block({ stableKey: "bad_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" })],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "BLOCK_STABLE_KEY_INVALID")).toBe(true);
+  });
+
+  it("uppercase hex is invalid", () => {
+    const rows: DefinitionRows = {
+      ...minimalValidRows(),
+      blocks: [block({ stableKey: "blk_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" })],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "BLOCK_STABLE_KEY_INVALID")).toBe(true);
+  });
+
+  it("wrong length is invalid", () => {
+    const rows: DefinitionRows = {
+      ...minimalValidRows(),
+      blocks: [block({ stableKey: "blk_aaaa" })],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "BLOCK_STABLE_KEY_INVALID")).toBe(true);
+  });
+
+  it("valid key is accepted", () => {
+    const rows: DefinitionRows = {
+      ...minimalValidRows(),
+      blocks: [block({ stableKey: "blk_0123456789abcdef0123456789abcdef" })],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "BLOCK_STABLE_KEY_INVALID")).toBe(false);
+  });
+
+  it("duplicate valid key is rejected", () => {
+    const rows: DefinitionRows = {
+      version: version(),
+      pages: [page()],
+      containers: [
+        container(),
+        container({ id: "container-2", pageId: "page-1", sortOrder: 1 }),
+      ],
+      blocks: [
+        block({ id: "b1", stableKey: "blk_0123456789abcdef0123456789abcdef" }),
+        block({
+          id: "b2",
+          stableKey: "blk_0123456789abcdef0123456789abcdef",
+          containerId: "container-2",
+          sortOrder: 0,
+        }),
+      ],
+      options: [],
+    };
+    const issues = validateVersionDefinition(rows);
+    expect(hasCode(issues, "BLOCK_STABLE_KEY_INVALID")).toBe(false);
+    expect(hasCode(issues, "BLOCK_STABLE_KEY_DUPLICATE")).toBe(true);
+  });
+});

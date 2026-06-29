@@ -106,3 +106,63 @@ describe("versionOrdering — validateEmptyScope", () => {
     expect(issues.length).toBeGreaterThan(0);
   });
 });
+
+// ── Comparator consistency ─────────────────────────────────────────────
+
+import { compareStrings } from "./definitionOrdering";
+import { buildCanonicalSnapshotV1, serializeCanonicalSnapshot } from "./canonicalSnapshot";
+import type { DefinitionRows } from "./definitionRows";
+
+describe("deterministic comparator consistency", () => {
+  it("compareStrings is a code-unit comparator (not localeCompare)", () => {
+    // Basic ordering
+    expect(compareStrings("a", "b")).toBeLessThan(0);
+    expect(compareStrings("b", "a")).toBeGreaterThan(0);
+    expect(compareStrings("a", "a")).toBe(0);
+    // Case ordering (lowercase > uppercase in ASCII)
+    expect(compareStrings("a", "A")).toBeGreaterThan(0);
+  });
+
+  it("shuffled row input produces identical serialized output and hash", () => {
+    const version: DefinitionRows["version"] = {
+      id: "v1",
+      templateId: "t1",
+      versionNumber: 1,
+      status: "DRAFT" as any,
+    };
+
+    // Rows in order A
+    const rowsA: DefinitionRows = {
+      version,
+      pages: [
+        { id: "p-b", templateVersionId: "v1", title: "B", sortOrder: 1 },
+        { id: "p-a", templateVersionId: "v1", title: "A", sortOrder: 0 },
+      ],
+      containers: [
+        { id: "c-b", templateVersionId: "v1", containerType: "section", title: null, config: { collapsible: false, initiallyCollapsed: false }, sortOrder: 1, pageId: "p-a", parentContainerId: null },
+        { id: "c-a", templateVersionId: "v1", containerType: "section", title: null, config: { collapsible: false, initiallyCollapsed: false }, sortOrder: 0, pageId: "p-a", parentContainerId: null },
+      ],
+      blocks: [
+        { id: "b-b", templateVersionId: "v1", blockType: "heading", blockImplementationVersion: 1, configSchemaVersion: 1, config: { level: 1, text: "B" }, containerId: "c-a", sortOrder: 1, stableKey: "blk_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", label: "B", required: false, conditionalVisibility: null, validation: null },
+        { id: "b-a", templateVersionId: "v1", blockType: "heading", blockImplementationVersion: 1, configSchemaVersion: 1, config: { level: 1, text: "A" }, containerId: "c-a", sortOrder: 0, stableKey: "blk_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", label: "A", required: false, conditionalVisibility: null, validation: null },
+      ],
+      options: [],
+    };
+
+    // Rows in shuffled order B
+    const rowsB: DefinitionRows = {
+      ...rowsA,
+      pages: [rowsA.pages[1], rowsA.pages[0]],
+      containers: [rowsA.containers[1], rowsA.containers[0]],
+      blocks: [rowsA.blocks[1], rowsA.blocks[0]],
+    };
+
+    const snapA = buildCanonicalSnapshotV1(rowsA);
+    const snapB = buildCanonicalSnapshotV1(rowsB);
+
+    const serialA = serializeCanonicalSnapshot(snapA);
+    const serialB = serializeCanonicalSnapshot(snapB);
+
+    expect(serialA).toBe(serialB);
+  });
+});

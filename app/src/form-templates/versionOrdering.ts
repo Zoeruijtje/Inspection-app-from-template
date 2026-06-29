@@ -8,6 +8,8 @@
  * This module performs no mutations and imports no server/Prisma code.
  */
 
+import { compareStrings } from "./definitionOrdering";
+
 export type OrderingValidationIssue = {
   scope: string;
   code: "ORDER_GAP" | "ORDER_DUPLICATE" | "ORDER_NEGATIVE" | "ORDER_NON_INTEGER";
@@ -37,7 +39,7 @@ export function validateScopeOrder(
   const sorted = [...entries].sort((a, b) => {
     const delta = a.sortOrder - b.sortOrder;
     if (delta !== 0) return delta;
-    return a.id.localeCompare(b.id);
+    return compareStrings(a.id, b.id);
   });
 
   // Check non-integer values

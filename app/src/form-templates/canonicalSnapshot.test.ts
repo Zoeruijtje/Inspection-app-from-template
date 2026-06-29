@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Prisma } from "@prisma/client";
 import {
+  assertSnapshotRowsStructurallyBuildable,
   buildCanonicalSnapshotV1,
   canonicalizeJsonValue,
   CanonicalizationError,
@@ -553,5 +554,258 @@ describe("hashCanonicalSnapshot", () => {
     };
     const hash2 = hashCanonicalSnapshot(buildCanonicalSnapshotV1(rows2));
     expect(hash1).toBe(hash2);
+  });
+});
+
+// ── Structural preflight tests ─────────────────────────────────────────
+
+describe("assertSnapshotRowsStructurallyBuildable", () => {
+  function baseRows(): DefinitionRows {
+    return {
+      version: {
+        id: "v1",
+        templateId: "t1",
+        versionNumber: 1,
+        status: "DRAFT" as any,
+      },
+      pages: [
+        {
+          id: "p1",
+          templateVersionId: "v1",
+          title: "Page 1",
+          sortOrder: 0,
+        },
+      ],
+      containers: [
+        {
+          id: "c1",
+          templateVersionId: "v1",
+          containerType: "section",
+          title: null,
+          config: { collapsible: false, initiallyCollapsed: false },
+          sortOrder: 0,
+          pageId: "p1",
+          parentContainerId: null,
+        },
+      ],
+      blocks: [
+        {
+          id: "b1",
+          templateVersionId: "v1",
+          blockType: "heading",
+          blockImplementationVersion: 1,
+          configSchemaVersion: 1,
+          config: { level: 1, text: "Hello" },
+          containerId: "c1",
+          sortOrder: 0,
+          stableKey: "blk_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          label: "Heading",
+          required: false,
+          conditionalVisibility: null,
+          validation: null,
+        },
+      ],
+      options: [],
+    };
+  }
+
+  it("accepts valid rows", () => {
+    expect(() => assertSnapshotRowsStructurallyBuildable(baseRows())).not.toThrow();
+  });
+
+  it("rejects orphan option (missing block)", () => {
+    const rows = {
+      ...baseRows(),
+      options: [
+        {
+          id: "o1",
+          blockId: "nonexistent",
+          label: "X",
+          value: "x",
+          sortOrder: 0,
+          color: null,
+          score: null,
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects missing page reference", () => {
+    const rows = {
+      ...baseRows(),
+      containers: [
+        {
+          ...baseRows().containers[0],
+          pageId: "nonexistent",
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects missing parent container", () => {
+    const rows: DefinitionRows = {
+      ...baseRows(),
+      containers: [
+        baseRows().containers[0],
+        {
+          id: "c2",
+          templateVersionId: "v1",
+          containerType: "section",
+          title: null,
+          config: { collapsible: false, initiallyCollapsed: false },
+          sortOrder: 0,
+          pageId: null,
+          parentContainerId: "nonexistent",
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects self-parent container", () => {
+    const rows: DefinitionRows = {
+      ...baseRows(),
+      containers: [
+        {
+          id: "self",
+          templateVersionId: "v1",
+          containerType: "section",
+          title: null,
+          config: { collapsible: false, initiallyCollapsed: false },
+          sortOrder: 0,
+          pageId: null,
+          parentContainerId: "self",
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects two-node container cycle", () => {
+    const rows: DefinitionRows = {
+      ...baseRows(),
+      containers: [
+        {
+          id: "c1",
+          templateVersionId: "v1",
+          containerType: "section",
+          title: null,
+          config: { collapsible: false, initiallyCollapsed: false },
+          sortOrder: 0,
+          pageId: null,
+          parentContainerId: "c2",
+        },
+        {
+          id: "c2",
+          templateVersionId: "v1",
+          containerType: "section",
+          title: null,
+          config: { collapsible: false, initiallyCollapsed: false },
+          sortOrder: 1,
+          pageId: null,
+          parentContainerId: "c1",
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects disconnected container", () => {
+    const rows: DefinitionRows = {
+      ...baseRows(),
+      containers: [
+        baseRows().containers[0],
+        {
+          id: "orphan",
+          templateVersionId: "v1",
+          containerType: "section",
+          title: null,
+          config: { collapsible: false, initiallyCollapsed: false },
+          sortOrder: 0,
+          pageId: null,
+          parentContainerId: "missing",
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects duplicate page ID", () => {
+    const rows = {
+      ...baseRows(),
+      pages: [
+        baseRows().pages[0],
+        { ...baseRows().pages[0] },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects duplicate option ID", () => {
+    const rows = {
+      ...baseRows(),
+      options: [
+        {
+          id: "o1",
+          blockId: "b1",
+          label: "X",
+          value: "x",
+          sortOrder: 0,
+          color: null,
+          score: null,
+        },
+        {
+          id: "o1",
+          blockId: "b1",
+          label: "Y",
+          value: "y",
+          sortOrder: 1,
+          color: null,
+          score: null,
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects cross-version page", () => {
+    const rows = {
+      ...baseRows(),
+      pages: [
+        {
+          ...baseRows().pages[0],
+          templateVersionId: "other-version",
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects cross-version container", () => {
+    const rows = {
+      ...baseRows(),
+      containers: [
+        {
+          ...baseRows().containers[0],
+          templateVersionId: "other-version",
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
+  });
+
+  it("rejects cross-version block", () => {
+    const rows = {
+      ...baseRows(),
+      blocks: [
+        {
+          ...baseRows().blocks[0],
+          templateVersionId: "other-version",
+        },
+      ],
+    };
+    expect(() => assertSnapshotRowsStructurallyBuildable(rows)).toThrow(SnapshotBuildError);
   });
 });

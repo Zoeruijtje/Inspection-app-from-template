@@ -15,6 +15,17 @@ export type OrderedRecord = {
   sortOrder: number;
 };
 
+/**
+ * Deterministic code-unit string comparator.
+ * Never uses localeCompare — locale-sensitive comparison can produce
+ * different results across environments and break hash determinism.
+ */
+export function compareStrings(left: string, right: string): number {
+  if (left < right) return -1;
+  if (left > right) return 1;
+  return 0;
+}
+
 export function orderBySortOrderThenId<T extends OrderedRecord>(
   records: readonly T[],
 ): T[] {
@@ -24,7 +35,7 @@ export function orderBySortOrderThenId<T extends OrderedRecord>(
       return sortOrderDelta;
     }
 
-    return left.id.localeCompare(right.id);
+    return compareStrings(left.id, right.id);
   });
 }
 
