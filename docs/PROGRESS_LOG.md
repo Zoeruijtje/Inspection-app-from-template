@@ -15,16 +15,33 @@
 - Phase 3A-2 controlled source-owned form-builder registries are complete.
 - Phase 3A-3 authenticated form-template ownership, metadata, and lifecycle server operations are implemented.
 - Phase 3A-4A definition-level authorization, read-only normalized definition tree loading, page CRUD, and page ordering normalization are implemented.
+- Phase 3A-4B authenticated root container CRUD, parent compatibility checks, cross-version prevention, generic cycle prevention helpers, and source/destination container ordering normalization are implemented.
 
 ## Next milestone
 
-Phase 3A-4B — Container CRUD, parent compatibility, and cycle prevention. Do not start block/option writes, publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
+Phase 3A-4C — Block and Option CRUD, Stable Keys, and Registry Validation. Do not start publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
 
 ## In progress
 
-- Phase 3A-4A is implemented and awaiting review/commit. Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
+- Phase 3A-4B is implemented and awaiting review/commit. Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
 
 ## Completed
+
+- Phase 3A-4B container operations completed 2026-06-29.
+
+- Implemented authenticated `createFormContainer`, `updateFormContainer`, `moveFormContainer`, and `deleteFormContainer` actions for active owned draft versions only.
+- Added strict container operation input validation with a discriminated page/container parent target, UUID checks, unknown-property rejection, title normalization, JSON-serializable config payload types, and complete registry config validation.
+- Added pure parent-compatibility helpers. For the current production registry, `section` is root-eligible under a page because `allowedParentTypes` is empty, but it cannot be nested and cannot parent child containers because both-sided compatibility fails.
+- Added pure generic container-graph helpers for future nested types. The helpers reject self-parenting, direct/deep descendant moves, duplicate graph rows, missing parent references, and malformed existing ancestry cycles without relying on a fixed depth limit.
+- Create and move operations prevent cross-version parent references by resolving destination pages/containers through the source or supplied version inside the same Prisma transaction.
+- Container create, move, and delete normalize affected sibling scopes transactionally with contiguous integer `sortOrder` values. Same-scope moves use final zero-based indexes over `0..N-1`; cross-scope moves remove first and insert into `0..M`; creates insert into `0..N` or append by omission; deletes compact the former source scope.
+- Delete relies on the existing Prisma cascade behavior for descendant containers, blocks, and options; no block or option write operations were added.
+- Added Wasp declarations for the four container actions with operation-level `auth: true`.
+- Added focused Vitest coverage for validation, compatibility, graph/cycle helpers, ownership/state handling, cross-version rejection, root `section` behavior, config validation/defaulting, mocked transaction-client usage, and ordering normalization.
+- Checks run: focused Vitest suite passed (`75` tests); `git diff --check` passed; `make check` passed; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no scripts present.
+- `wasp start` successfully compiled the Wasp project and built the SDK, including generated container operation types, then stopped before dev-server startup because the local database was not running.
+- Only the root `section` type is currently production-usable. Nested production container types remain unavailable. Block and option writes remain unimplemented.
+- No schema, migration, registry, UI, runtime, report, or PDF code was changed.
 
 - Phase 3A-4A definition tree and ordered page operations completed 2026-06-29.
 

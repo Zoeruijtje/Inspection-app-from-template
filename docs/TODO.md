@@ -172,12 +172,15 @@
 - [x] Phase 3A-4A read-only normalized definition tree loading
 - [x] Phase 3A-4A draft-only mutability checks for page writes
 - [x] Phase 3A-4A page integer sort-order normalization
-- [ ] Phase 3A-4B authenticated container definition CRUD
+- [x] Phase 3A-4B authenticated container definition CRUD
+- [x] Phase 3A-4B root `section` registry validation for container writes
+- [x] Phase 3A-4B container parent compatibility, cross-version prevention, and generic cycle prevention helpers
+- [x] Phase 3A-4B container integer sort-order normalization
 - [ ] Phase 3A-4C authenticated block definition CRUD
 - [ ] Phase 3A-4D authenticated option definition CRUD
 - [ ] Phase 3A-4 registry validation for definition writes
-- [ ] Phase 3A-4 cross-version prevention and cycle prevention
-- [ ] Phase 3A-4 container/block/option integer sort-order normalization
+- [ ] Phase 3A-4C block registry validation, stable-key generation, and block ordering normalization
+- [ ] Phase 3A-4C option registry/context validation and option ordering normalization
 
 ## Phase 3B — Basic template management
 
