@@ -161,7 +161,7 @@
 - [ ] Full template CRUD UI with ownership works
 - [ ] Version draft/publish lifecycle works
 - [ ] Published version is immutable
-- [ ] Block config validated against registry schemas
+- [x] Phase 3A-4C1 block config validated against registry schemas for baseline block CRUD
 - [ ] Another user cannot access template
 - [ ] Registry can register new block types without schema changes
 - [ ] Existing app functionality (clients, properties, inspections) preserved
@@ -176,10 +176,10 @@
 - [x] Phase 3A-4B root `section` registry validation for container writes
 - [x] Phase 3A-4B container parent compatibility, cross-version prevention, and generic cycle prevention helpers
 - [x] Phase 3A-4B container integer sort-order normalization
-- [ ] Phase 3A-4C authenticated block definition CRUD
+- [x] Phase 3A-4C1 authenticated baseline block definition CRUD
 - [ ] Phase 3A-4D authenticated option definition CRUD
-- [ ] Phase 3A-4 registry validation for definition writes
-- [ ] Phase 3A-4C block registry validation, stable-key generation, and block ordering normalization
+- [x] Phase 3A-4C1 block registry validation for definition writes
+- [x] Phase 3A-4C1 block registry validation, stable-key generation, and block ordering normalization
 - [ ] Phase 3A-4C option registry/context validation and option ordering normalization
 
 ## Phase 3B — Basic template management

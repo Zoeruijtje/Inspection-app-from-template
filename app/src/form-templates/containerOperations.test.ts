@@ -706,7 +706,8 @@ function containerRecord(overrides = {}) {
 function sortOrderUpdateManyCalls(
   tx: ReturnType<typeof createTx>,
 ): [string, number][] {
-  return tx.formContainerDefinition.updateMany.mock.calls
+  const calls = tx.formContainerDefinition.updateMany.mock.calls as any[][];
+  return calls
     .filter(([args]) => "sortOrder" in (args.data ?? {}))
     .map(([args]) => [args.where.id, args.data.sortOrder]);
 }

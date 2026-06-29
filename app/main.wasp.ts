@@ -13,6 +13,7 @@ import { head } from "./src/client/head.wasp";
 import { clientsSpec } from "./src/clients/clients.wasp";
 import { demoAiAppSpec } from "./src/demo-ai-app/demo-ai-app.wasp";
 import { fileUploadSpec } from "./src/file-upload/file-upload.wasp";
+import { formTemplateBlockSpec } from "./src/form-templates/blockOperations.wasp";
 import { formTemplateContainerSpec } from "./src/form-templates/containerOperations.wasp";
 import { formTemplatesSpec } from "./src/form-templates/formTemplates.wasp";
 import { formTemplateDefinitionSpec } from "./src/form-templates/definitionOperations.wasp";
@@ -57,6 +58,7 @@ export default app({
     formTemplatesSpec,
     formTemplateDefinitionSpec,
     formTemplateContainerSpec,
+    formTemplateBlockSpec,
     demoAiAppSpec,
     paymentSpec,
     fileUploadSpec,

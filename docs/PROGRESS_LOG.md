@@ -16,16 +16,35 @@
 - Phase 3A-3 authenticated form-template ownership, metadata, and lifecycle server operations are implemented.
 - Phase 3A-4A definition-level authorization, read-only normalized definition tree loading, page CRUD, and page ordering normalization are implemented.
 - Phase 3A-4B authenticated root container CRUD, parent compatibility checks, cross-version prevention, generic cycle prevention helpers, and source/destination container ordering normalization are implemented.
+- Phase 3A-4C1 authenticated baseline block CRUD, registry validation, immutable stable keys, block/container compatibility, and source/destination block ordering normalization are implemented.
 
 ## Next milestone
 
-Phase 3A-4C — Block and Option CRUD, Stable Keys, and Registry Validation. Do not start publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
+Phase 3A-4C2 — Option Capability Contract, Option CRUD, and Contextual Choice Validation. Do not start publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
 
 ## In progress
 
-- Phase 3A-4B is implemented and awaiting review/commit. Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
+- Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
 
 ## Completed
+
+- Phase 3A-4C1 block operations completed 2026-06-29.
+
+- Implemented authenticated `createFormBlock`, `updateFormBlock`, `moveFormBlock`, and `deleteFormBlock` actions for active owned draft versions only.
+- Added strict block operation input validation with UUID checks, label trimming/max length, unknown-property rejection, optional create position, exact move indexes, and no acceptance of client-owned persistence fields such as `stableKey`, raw `sortOrder`, registry version fields, options, conditional visibility, or validation rules.
+- Added block/container compatibility checks requiring both `containerDefinition.acceptsBlocks === true` and `blockDefinition.allowedContainerTypes` to include the destination container type. The current production registry remains unchanged: `heading`, `paragraph`, `short_text`, and `single_select` are accepted only in `section`.
+- Added registry-backed config validation/defaulting and registry-owned persistence of `blockImplementationVersion` and `configSchemaVersion`.
+- Added immutable server-generated stable keys using cryptographically secure UUIDs in `blk_<32 lowercase hex>` form. Updates and moves preserve stable keys. Targeted `templateVersionId + stableKey` Prisma `P2002` conflicts retry with bounded attempts and return 409 after repeated collisions.
+- Added display-block required policy for the current baseline: `heading` and `paragraph` cannot be required; `short_text` and `single_select` may be required or optional. A formal registry response-kind capability remains deferred until the baseline list is insufficient.
+- Added the temporary Phase 3A-4C1 single-select boundary: `single_select.config.defaultValue` is rejected on create/update until option CRUD and contextual option validation exist.
+- Create, move, and delete normalize affected block sibling scopes transactionally using `templateVersionId + containerId` for sibling reads and `id + templateVersionId` for normalization writes. Same-container moves use final zero-based indexes over `0..N-1`; cross-container moves remove first and insert into `0..M`; creates insert into `0..N` or append by omission; deletes compact the former source scope.
+- Delete relies on the existing Prisma cascade from blocks to option rows; no option write operations were added.
+- Added Wasp declarations for the four block actions with operation-level `auth: true`.
+- Added focused Vitest coverage for validation, compatibility, required policy, single-select default rejection, registry validation, ownership/lifecycle, cross-version protection, stable-key generation/collisions/immutability, transaction-client usage, and ordering normalization.
+- Checks run: focused Vitest suite passed (`100` tests); `git diff --check` passed; `make check` passed; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no scripts present.
+- `wasp start` successfully compiled the Wasp project and built the SDK, including generated block operation types, then stopped before dev-server startup because the local database was not running.
+- Option CRUD remains unimplemented. `single_select.defaultValue` remains unavailable until contextual option validation exists. Builder UI, runtime execution, publishing, reports, and PDF work remain deferred.
+- No schema, migration, registry, UI, runtime, report, or PDF code was changed.
 
 - Phase 3A-4B container operations completed 2026-06-29.
 
