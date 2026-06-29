@@ -375,6 +375,13 @@ describe("block operations", () => {
       where: { blockId: BLOCK_ID, value: "opt-a" },
       select: { id: true, value: true },
     });
+    expect(tx.formBlockDefinition.update).toHaveBeenCalledWith({
+      where: { id: BLOCK_ID },
+      data: {
+        config: { allowOther: false, defaultValue: "opt-a" },
+      },
+      select: expect.any(Object),
+    });
     expect(result.config).toEqual({ allowOther: false, defaultValue: "opt-a" });
   });
 

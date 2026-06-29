@@ -323,7 +323,7 @@ describe("option operations", () => {
 
   // ─── Capability enforcement ───────────────────────────────────────
 
-  it("rejects option create on heading block (400)", async () => {
+  it("rejects option create on heading block (400) with meaningful message", async () => {
     const tx = createTx();
     waspServerMock.prisma.$transaction.mockImplementation(async (callback) =>
       callback(tx),
@@ -337,7 +337,10 @@ describe("option operations", () => {
         { blockId: BLOCK_ID, label: "A", value: "a" },
         { user: { id: "user-1" } } as never,
       ),
-    ).rejects.toMatchObject({ statusCode: 400 });
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: expect.stringContaining("heading"),
+    });
     expect(tx.formBlockOption.create).not.toHaveBeenCalled();
   });
 

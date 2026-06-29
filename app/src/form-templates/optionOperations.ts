@@ -614,10 +614,7 @@ function withOptionCapabilityHttpError<T>(fn: () => T): T {
     return fn();
   } catch (error) {
     if (error instanceof OptionCapabilityError) {
-      throw new HttpError(
-        400,
-        "This block type does not support options.",
-      );
+      throw new HttpError(400, error.message);
     }
 
     throw error;
