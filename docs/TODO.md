@@ -165,14 +165,19 @@
 - [ ] Another user cannot access template
 - [ ] Registry can register new block types without schema changes
 - [ ] Existing app functionality (clients, properties, inspections) preserved
-- [ ] Ordering strategy from Phase 3A0-A applied to sortOrder columns
+- [x] Ordering strategy from Phase 3A0-A applied to page definition operations
 - [x] Container reference approach resolved (explicit FK to `FormContainerDefinition`, not polymorphic block parents)
-- [ ] Phase 3A-4 authenticated page/container/block/option definition CRUD
-- [ ] Phase 3A-4 read-only normalized definition tree loading
-- [ ] Phase 3A-4 draft-only mutability checks
+- [x] Phase 3A-4A reusable definition-level authorization for owned template versions
+- [x] Phase 3A-4A authenticated page definition CRUD
+- [x] Phase 3A-4A read-only normalized definition tree loading
+- [x] Phase 3A-4A draft-only mutability checks for page writes
+- [x] Phase 3A-4A page integer sort-order normalization
+- [ ] Phase 3A-4B authenticated container definition CRUD
+- [ ] Phase 3A-4C authenticated block definition CRUD
+- [ ] Phase 3A-4D authenticated option definition CRUD
 - [ ] Phase 3A-4 registry validation for definition writes
 - [ ] Phase 3A-4 cross-version prevention and cycle prevention
-- [ ] Phase 3A-4 integer sort-order normalization
+- [ ] Phase 3A-4 container/block/option integer sort-order normalization
 
 ## Phase 3B — Basic template management
 

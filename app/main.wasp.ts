@@ -14,6 +14,7 @@ import { clientsSpec } from "./src/clients/clients.wasp";
 import { demoAiAppSpec } from "./src/demo-ai-app/demo-ai-app.wasp";
 import { fileUploadSpec } from "./src/file-upload/file-upload.wasp";
 import { formTemplatesSpec } from "./src/form-templates/formTemplates.wasp";
+import { formTemplateDefinitionSpec } from "./src/form-templates/definitionOperations.wasp";
 import { inspectionsSpec } from "./src/inspections/inspections.wasp";
 import { paymentSpec } from "./src/payment/payment.wasp";
 import { projectsSpec } from "./src/projects/projects.wasp";
@@ -53,6 +54,7 @@ export default app({
     propertiesSpec,
     inspectionsSpec,
     formTemplatesSpec,
+    formTemplateDefinitionSpec,
     demoAiAppSpec,
     paymentSpec,
     fileUploadSpec,

@@ -14,16 +14,32 @@
 - Phase 3A-1 production form-template schema and migration are complete.
 - Phase 3A-2 controlled source-owned form-builder registries are complete.
 - Phase 3A-3 authenticated form-template ownership, metadata, and lifecycle server operations are implemented.
+- Phase 3A-4A definition-level authorization, read-only normalized definition tree loading, page CRUD, and page ordering normalization are implemented.
 
 ## Next milestone
 
-Phase 3A-4 — Definition CRUD, tree integrity, and integer ordering. Do not start publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
+Phase 3A-4B — Container CRUD, parent compatibility, and cycle prevention. Do not start block/option writes, publishing, snapshot generation, builder UI, drag-and-drop, runtime execution, reports, or PDF work in that checkpoint.
 
 ## In progress
 
-- Phase 3A-3 is implemented and awaiting review/commit. Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
+- Phase 3A-4A is implemented and awaiting review/commit. Phase 3A0-B Gate 1 is manually verified PASS for functional renderer feasibility. Phase 3A0-A v5 Stage B is manually verified; touch and group-container dragging remain outside the validated scope.
 
 ## Completed
+
+- Phase 3A-4A definition tree and ordered page operations completed 2026-06-29.
+
+- Added reusable definition-level authorization helpers for owned template-version reads, active-draft version writes, and page writes resolved through version/template ownership.
+- Implemented strict definition input schemas for the read-only tree query and page create/update/move/delete actions.
+- Implemented pure integer ordering helpers for deterministic ordering, insertion, final-index movement, deletion, and contiguous order-update generation.
+- Implemented read-only normalized definition tree loading for one owned version. The query loads pages, containers, blocks, and options as flat version-scoped collections and assembles the nested tree in application code without writing or repairing data.
+- Added tree integrity checks for malformed owned definition data, including invalid page/parent references, page-versus-parent violations, cycles, block/option missing-parent references, duplicate IDs, and duplicate/gapped sibling ordering. Integrity failures return generic 409 errors.
+- Implemented authenticated page create, update, move, and delete actions. Writes recheck ownership, active template lifecycle, and draft version status inside the Prisma transaction before mutating data.
+- Page create supports append by omission or insertion at `0..currentCount`; move uses final zero-based index semantics over `0..N-1`; delete relies on existing cascades and compacts remaining sibling order. Every committed page create/move/delete rewrites page `sortOrder` values contiguously to `0..n-1` inside the same transaction.
+- Added Wasp declarations for `getFormTemplateVersionDefinitionTree`, `createFormPage`, `updateFormPage`, `moveFormPage`, and `deleteFormPage` with operation-level auth enabled via Wasp 0.24 `auth: true`.
+- Added focused Vitest coverage for definition validation, authorization, ordering helpers, tree assembly/integrity, and mocked transaction page-operation behavior.
+- Checks run: focused Vitest suite passed (`51` tests); `git diff --check` passed; `make check` passed; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no scripts present.
+- `wasp start` successfully compiled the Wasp project and built the SDK, including generated definition operation types, then stopped before dev-server startup because the local database was not running.
+- Container, block, and option writes remain unimplemented. No schema, migration, registry, UI, runtime, report, or PDF code was changed.
 
 - Phase 3A-3 template ownership/lifecycle operations completed 2026-06-29.
 
