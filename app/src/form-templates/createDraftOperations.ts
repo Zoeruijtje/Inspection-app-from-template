@@ -45,6 +45,17 @@ type SourceVersionSnapshotMetadata = {
   snapshotHash: string | null;
 };
 
+type ConfirmedDraftVersion = {
+  id: string;
+  templateId: string;
+  versionNumber: number;
+  status: FormTemplateVersionStatus;
+  publishedAt: Date | null;
+  snapshot: Prisma.JsonValue | null;
+  snapshotSchemaVersion: number | null;
+  snapshotHash: string | null;
+};
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CreateDraftTxClient = {
   formTemplateVersion: {
@@ -55,18 +66,22 @@ type CreateDraftTxClient = {
   formPageDefinition: {
     findMany: (args: any) => any;
     createMany: (args: any) => any;
+    count: (args: any) => any;
   };
   formContainerDefinition: {
     findMany: (args: any) => any;
     createMany: (args: any) => any;
+    count: (args: any) => any;
   };
   formBlockDefinition: {
     findMany: (args: any) => any;
     createMany: (args: any) => any;
+    count: (args: any) => any;
   };
   formBlockOption: {
     findMany: (args: any) => any;
     createMany: (args: any) => any;
+    count: (args: any) => any;
   };
 };
 
@@ -298,22 +313,23 @@ export const createDraftFromVersion: CreateDraftFromVersion<
         }
 
         await persistClonePlan(tx as CreateDraftTxClient, clonePlan);
+        const confirmedVersion = await confirmPersistedDraftClone(
+          tx as CreateDraftTxClient,
+          {
+            sourceVersion,
+            newVersionId,
+            newVersionNumber,
+            clonePlan,
+          },
+        );
 
         return {
-          versionId: createdVersion.id,
-          templateId: createdVersion.templateId,
-          versionNumber: createdVersion.versionNumber,
+          versionId: confirmedVersion.id,
+          templateId: confirmedVersion.templateId,
+          versionNumber: confirmedVersion.versionNumber,
           status: FormTemplateVersionStatus.DRAFT,
           sourceVersionId: sourceVersion.id,
-          counts: {
-            pages: clonePlan.pages.length,
-            containers: clonePlan.containerBatches.reduce(
-              (sum, batch) => sum + batch.length,
-              0,
-            ),
-            blocks: clonePlan.blocks.length,
-            options: clonePlan.options.length,
-          },
+          counts: clonePlanCounts(clonePlan),
         };
       },
       {
@@ -434,6 +450,105 @@ async function persistClonePlan(
     plan.options,
     tx.formBlockOption.createMany,
   );
+}
+
+async function confirmPersistedDraftClone(
+  tx: CreateDraftTxClient,
+  {
+    sourceVersion,
+    newVersionId,
+    newVersionNumber,
+    clonePlan,
+  }: {
+    sourceVersion: {
+      id: string;
+      templateId: string;
+    };
+    newVersionId: string;
+    newVersionNumber: number;
+    clonePlan: VersionClonePlan;
+  },
+): Promise<ConfirmedDraftVersion> {
+  const confirmedVersion = (await tx.formTemplateVersion.findFirst({
+    where: {
+      id: newVersionId,
+      templateId: sourceVersion.templateId,
+    },
+    select: {
+      id: true,
+      templateId: true,
+      versionNumber: true,
+      status: true,
+      publishedAt: true,
+      snapshot: true,
+      snapshotSchemaVersion: true,
+      snapshotHash: true,
+    },
+  })) as ConfirmedDraftVersion | null;
+
+  if (
+    !confirmedVersion ||
+    confirmedVersion.id !== newVersionId ||
+    confirmedVersion.templateId !== sourceVersion.templateId ||
+    confirmedVersion.versionNumber !== newVersionNumber ||
+    confirmedVersion.status !== FormTemplateVersionStatus.DRAFT ||
+    confirmedVersion.publishedAt !== null ||
+    confirmedVersion.snapshot !== null ||
+    confirmedVersion.snapshotSchemaVersion !== null ||
+    confirmedVersion.snapshotHash !== null
+  ) {
+    throw new HttpError(409, "Persisted draft version could not be confirmed.");
+  }
+
+  const expectedCounts = clonePlanCounts(clonePlan);
+  const clonedBlockIds = clonePlan.blocks.map((block) => block.id);
+  const persistedCounts: ValidationCounts = {
+    pages: await tx.formPageDefinition.count({
+      where: {
+        templateVersionId: newVersionId,
+      },
+    }),
+    containers: await tx.formContainerDefinition.count({
+      where: {
+        templateVersionId: newVersionId,
+      },
+    }),
+    blocks: await tx.formBlockDefinition.count({
+      where: {
+        templateVersionId: newVersionId,
+      },
+    }),
+    options: await tx.formBlockOption.count({
+      where: {
+        blockId: {
+          in: clonedBlockIds,
+        },
+      },
+    }),
+  };
+
+  if (
+    persistedCounts.pages !== expectedCounts.pages ||
+    persistedCounts.containers !== expectedCounts.containers ||
+    persistedCounts.blocks !== expectedCounts.blocks ||
+    persistedCounts.options !== expectedCounts.options
+  ) {
+    throw new HttpError(409, "Persisted draft row counts could not be confirmed.");
+  }
+
+  return confirmedVersion;
+}
+
+function clonePlanCounts(plan: VersionClonePlan): ValidationCounts {
+  return {
+    pages: plan.pages.length,
+    containers: plan.containerBatches.reduce(
+      (sum, batch) => sum + batch.length,
+      0,
+    ),
+    blocks: plan.blocks.length,
+    options: plan.options.length,
+  };
 }
 
 async function createManyAndVerify<T>(

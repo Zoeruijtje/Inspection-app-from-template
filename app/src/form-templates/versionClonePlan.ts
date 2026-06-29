@@ -6,6 +6,7 @@ import type {
   DefinitionBlockRow,
   DefinitionOptionRow,
 } from "./definitionRows";
+import { canonicalizeJsonValue } from "./canonicalSnapshot";
 
 export type NewPageRow = {
   id: string;
@@ -146,7 +147,7 @@ export function buildVersionClonePlan({
     templateVersionId: newVersionId,
     containerType: container.containerType,
     title: container.title,
-    config: container.config,
+    config: cloneNullableJsonValue(container.config),
     sortOrder: container.sortOrder,
     pageId:
       container.pageId !== null
@@ -168,7 +169,7 @@ export function buildVersionClonePlan({
     blockType: block.blockType,
     blockImplementationVersion: block.blockImplementationVersion,
     configSchemaVersion: block.configSchemaVersion,
-    config: block.config,
+    config: cloneJsonValue(block.config),
     containerId: requireMappedId(
       containerIds,
       block.containerId,
@@ -178,8 +179,8 @@ export function buildVersionClonePlan({
     stableKey: block.stableKey,
     label: block.label,
     required: block.required,
-    conditionalVisibility: block.conditionalVisibility,
-    validation: block.validation,
+    conditionalVisibility: cloneNullableJsonValue(block.conditionalVisibility),
+    validation: cloneNullableJsonValue(block.validation),
   }));
 
   const options = sourceRows.options.map((option) => ({
@@ -259,6 +260,16 @@ function assertEverySourceRowMapped(
   }
 }
 
+function cloneJsonValue(value: Prisma.JsonValue): Prisma.JsonValue {
+  return canonicalizeJsonValue(value) as Prisma.JsonValue;
+}
+
+function cloneNullableJsonValue(
+  value: Prisma.JsonValue | null,
+): Prisma.JsonValue | null {
+  return value === null ? null : cloneJsonValue(value);
+}
+
 function batchContainersByDepth(
   sourceContainers: readonly DefinitionContainerRow[],
   newContainers: readonly NewContainerRow[],
@@ -268,14 +279,36 @@ function batchContainersByDepth(
     sourceContainers.map((source, index) => [source.id, newContainers[index]]),
   );
   const depthById = new Map<string, number>();
+  const visitStateById = new Map<string, "visiting" | "visited">();
 
   const getDepth = (container: DefinitionContainerRow): number => {
     const cached = depthById.get(container.id);
     if (cached !== undefined) return cached;
 
+    const visitState = visitStateById.get(container.id);
+    if (visitState === "visiting") {
+      throw new VersionClonePlanError(
+        `Container hierarchy contains a cycle involving ${container.id}.`,
+      );
+    }
+    if (visitState === "visited") {
+      throw new VersionClonePlanError(
+        `Container ${container.id} was marked visited without a resolved depth.`,
+      );
+    }
+
+    visitStateById.set(container.id, "visiting");
+
     if (container.parentContainerId === null) {
       depthById.set(container.id, 0);
+      visitStateById.set(container.id, "visited");
       return 0;
+    }
+
+    if (container.parentContainerId === container.id) {
+      throw new VersionClonePlanError(
+        `Container ${container.id} references itself as parent.`,
+      );
     }
 
     const parent = sourceById.get(container.parentContainerId);
@@ -287,6 +320,7 @@ function batchContainersByDepth(
 
     const depth = getDepth(parent) + 1;
     depthById.set(container.id, depth);
+    visitStateById.set(container.id, "visited");
     return depth;
   };
 
@@ -304,7 +338,18 @@ function batchContainersByDepth(
     batches[depth] = batch;
   }
 
-  return batches;
+  const compacted: NewContainerRow[][] = [];
+  for (let depth = 0; depth < batches.length; depth += 1) {
+    const batch = batches[depth];
+    if (!batch || batch.length === 0) {
+      throw new VersionClonePlanError(
+        `Container depth batch ${depth} is empty.`,
+      );
+    }
+    compacted.push(batch);
+  }
+
+  return compacted;
 }
 
 function collectSourceIds(rows: DefinitionRows): Set<string> {

@@ -20,6 +20,7 @@
 - Phase 3A-4C2A option capability contract, registry declarations, pure capability helpers, and database-enforced per-block option-value uniqueness are implemented.
 - Phase 3A-4C2B option CRUD, capability enforcement, duplicate-value handling, contiguous ordering, contextual default validation, and atomic default maintenance are implemented.
 - Phase 3A-4D3 authenticated create-draft-from-version operation with source snapshot integrity verification and deep definition cloning is implemented.
+- Phase 3A-4D3 repair completed: JSON cloning, cycle-safe container batching, and post-write draft confirmation hardened.
 
 ## Next milestone
 
@@ -30,6 +31,18 @@ Phase 3A-4E — version history/query hardening and lifecycle cleanup around dra
 - None.
 
 ## Completed
+
+- Phase 3A-4D3 repair completed 2026-06-29.
+
+- Hardened `buildVersionClonePlan` so JSON fields (`container.config`, `block.config`, `block.conditionalVisibility`, `block.validation`) are recreated through the canonical JSON path instead of reusing source object/array references. Nulls and primitives are preserved, arrays/objects remain JSON values, and nested mutations of cloned values do not affect source rows.
+- Hardened container depth batching with explicit visiting/visited states. Missing parents, self-parenting, two-node cycles, and longer cycles now throw `VersionClonePlanError` instead of risking recursion failure. Valid containers are emitted exactly once in contiguous root-to-descendant batches.
+- Added post-write draft confirmation inside the same transaction after clone persistence: the new version is re-read by `{ id, templateId }`, checked for exact draft metadata and empty publication/snapshot metadata, then persisted pages/containers/blocks/options are counted and compared to the clone plan.
+- Expanded create-draft tests for lifecycle, source integrity, version allocation, targeted `P2002`/`P2034` mapping, createMany count verification, insert order, no `skipDuplicates`, post-write metadata/count confirmation, and safe DTO shape. Expanded clone-plan tests for JSON reference independence and cycle-safe batching. Form-template Vitest now passes 464 tests; registry self-check passes 38 tests.
+- PostgreSQL port diagnosis: port 5432 is owned by the project Wasp dev database container `wasp-dev-db-InspectionApp-349b0351ab` (`postgres:18`), not an unrelated process. The container has no Docker healthcheck but is running and `pg_isready` reports accepting connections.
+- The dev database initially lacked tables (`public.Session` missing in logs). Applied the six existing migrations only with `prisma migrate deploy` against Wasp's generated schema; no new migration was created. Verified 22 public tables exist, including `Session` and all form-template tables.
+- Verification: `git diff --check` passed; restricted diff for schema, migrations, package.json, registries, clients, properties, inspections, spikes, and `docs/NEXT_PROMPT.md` is empty; `make check` passed; `npx prisma validate` failed without `DATABASE_URL` in the shell, then passed with the verified local Wasp dev DB URL; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no configured script output.
+- Wasp startup: sandboxed `timeout 180 wasp start` compiled and set up the database but could not complete its DB connection check; elevated `timeout 180 wasp start` compiled, set up the database, built the SDK, started Vite on port 3000 and the backend on port 3001, started pg-boss, served auth requests, and stayed alive until the timeout exited 124. Wasp still reports its schema-change warning and suggests `wasp db migrate-dev`, but no missing-table or connection errors remain after applying existing migrations.
+- Restricted scope preserved: no schema, migration, package, registry, client, property, inspection, spike, or `docs/NEXT_PROMPT.md` changes.
 
 - Phase 3A-4D3 create draft from published or superseded version completed 2026-06-29.
 

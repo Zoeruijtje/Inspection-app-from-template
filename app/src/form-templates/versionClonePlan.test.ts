@@ -93,6 +93,14 @@ function idGenerator(ids: string[]) {
   };
 }
 
+const generatedIds = [
+  "new-page-1",
+  "new-section-1",
+  "new-group-1",
+  "new-block-1",
+  "new-option-1",
+];
+
 describe("buildVersionClonePlan", () => {
   it("deep-clones pages, containers, blocks, and options with new IDs and mappings", () => {
     const rows = sourceRows();
@@ -100,11 +108,7 @@ describe("buildVersionClonePlan", () => {
       sourceRows: rows,
       newVersionId: NEW_VERSION_ID,
       generateId: idGenerator([
-        "new-page-1",
-        "new-section-1",
-        "new-group-1",
-        "new-block-1",
-        "new-option-1",
+        ...generatedIds,
       ]),
     });
 
@@ -169,11 +173,7 @@ describe("buildVersionClonePlan", () => {
       sourceRows: rows,
       newVersionId: NEW_VERSION_ID,
       generateId: idGenerator([
-        "new-page-1",
-        "new-section-1",
-        "new-group-1",
-        "new-block-1",
-        "new-option-1",
+        ...generatedIds,
       ]),
     });
 
@@ -231,13 +231,269 @@ describe("buildVersionClonePlan", () => {
         sourceRows: rows,
         newVersionId: NEW_VERSION_ID,
         generateId: idGenerator([
-          "new-page-1",
-          "new-section-1",
-          "new-group-1",
-          "new-block-1",
-          "new-option-1",
+          ...generatedIds,
         ]),
       }),
     ).toThrow(VersionClonePlanError);
+  });
+
+  it("deep-clones nested object JSON fields without sharing source references", () => {
+    const rows = sourceRows();
+    rows.containers[0].config = {
+      nested: {
+        flags: { enabled: true },
+        values: [1, { label: "source" }],
+      },
+    };
+    rows.blocks[0].config = {
+      nested: {
+        values: [{ code: "A" }],
+      },
+    };
+    rows.blocks[0].conditionalVisibility = {
+      operator: "and",
+      conditions: [{ field: "x", equals: true }],
+    };
+    rows.blocks[0].validation = {
+      rules: {
+        min: 1,
+      },
+    };
+
+    const plan = buildVersionClonePlan({
+      sourceRows: rows,
+      newVersionId: NEW_VERSION_ID,
+      generateId: idGenerator(generatedIds),
+    });
+
+    const clonedContainerConfig = plan.containerBatches[0][0].config as {
+      nested: { flags: { enabled: boolean }; values: [number, { label: string }] };
+    };
+    const sourceContainerConfig = rows.containers[0].config as {
+      nested: { flags: { enabled: boolean }; values: [number, { label: string }] };
+    };
+    const clonedBlockConfig = plan.blocks[0].config as {
+      nested: { values: { code: string }[] };
+    };
+    const sourceBlockConfig = rows.blocks[0].config as {
+      nested: { values: { code: string }[] };
+    };
+    const clonedVisibility = plan.blocks[0].conditionalVisibility as {
+      conditions: { field: string; equals: boolean }[];
+    };
+    const sourceVisibility = rows.blocks[0].conditionalVisibility as {
+      conditions: { field: string; equals: boolean }[];
+    };
+    const clonedValidation = plan.blocks[0].validation as {
+      rules: { min: number };
+    };
+    const sourceValidation = rows.blocks[0].validation as {
+      rules: { min: number };
+    };
+
+    expect(clonedContainerConfig).toEqual(sourceContainerConfig);
+    expect(clonedContainerConfig).not.toBe(sourceContainerConfig);
+    expect(clonedContainerConfig.nested).not.toBe(sourceContainerConfig.nested);
+    expect(clonedContainerConfig.nested.flags).not.toBe(
+      sourceContainerConfig.nested.flags,
+    );
+    expect(clonedBlockConfig).toEqual(sourceBlockConfig);
+    expect(clonedBlockConfig).not.toBe(sourceBlockConfig);
+    expect(clonedVisibility.conditions).not.toBe(sourceVisibility.conditions);
+    expect(clonedValidation.rules).not.toBe(sourceValidation.rules);
+
+    clonedContainerConfig.nested.flags.enabled = false;
+    clonedContainerConfig.nested.values[1].label = "clone";
+    clonedBlockConfig.nested.values[0].code = "B";
+    clonedVisibility.conditions[0].field = "changed";
+    clonedValidation.rules.min = 99;
+
+    expect(sourceContainerConfig.nested.flags.enabled).toBe(true);
+    expect(sourceContainerConfig.nested.values[1].label).toBe("source");
+    expect(sourceBlockConfig.nested.values[0].code).toBe("A");
+    expect(sourceVisibility.conditions[0].field).toBe("x");
+    expect(sourceValidation.rules.min).toBe(1);
+  });
+
+  it("deep-clones nested array JSON fields without serializing them", () => {
+    const rows = sourceRows();
+    rows.containers[0].config = [["source", { value: 1 }]];
+    rows.blocks[0].config = [{ items: ["a", { value: 2 }] }];
+    rows.blocks[0].conditionalVisibility = [["visible", { when: "yes" }]];
+    rows.blocks[0].validation = [{ checks: [{ min: 1 }] }];
+
+    const plan = buildVersionClonePlan({
+      sourceRows: rows,
+      newVersionId: NEW_VERSION_ID,
+      generateId: idGenerator(generatedIds),
+    });
+
+    const clonedContainerConfig = plan.containerBatches[0][0].config as [
+      [string, { value: number }],
+    ];
+    const sourceContainerConfig = rows.containers[0].config as [
+      [string, { value: number }],
+    ];
+    const clonedBlockConfig = plan.blocks[0].config as [
+      { items: [string, { value: number }] },
+    ];
+    const sourceBlockConfig = rows.blocks[0].config as [
+      { items: [string, { value: number }] },
+    ];
+
+    expect(Array.isArray(clonedContainerConfig)).toBe(true);
+    expect(clonedContainerConfig).toEqual(sourceContainerConfig);
+    expect(clonedContainerConfig).not.toBe(sourceContainerConfig);
+    expect(clonedContainerConfig[0]).not.toBe(sourceContainerConfig[0]);
+    expect(clonedContainerConfig[0][1]).not.toBe(sourceContainerConfig[0][1]);
+    expect(clonedBlockConfig[0].items).not.toBe(sourceBlockConfig[0].items);
+
+    clonedContainerConfig[0][1].value = 11;
+    clonedBlockConfig[0].items[1].value = 22;
+
+    expect(sourceContainerConfig[0][1].value).toBe(1);
+    expect(sourceBlockConfig[0].items[1].value).toBe(2);
+  });
+
+  it("keeps null JSON fields as null and primitive JSON values as primitives", () => {
+    const rows = sourceRows();
+    rows.containers[0].config = null;
+    rows.blocks[0].config = "plain";
+    rows.blocks[0].conditionalVisibility = null;
+    rows.blocks[0].validation = true;
+
+    const plan = buildVersionClonePlan({
+      sourceRows: rows,
+      newVersionId: NEW_VERSION_ID,
+      generateId: idGenerator(generatedIds),
+    });
+
+    expect(plan.containerBatches[0][0].config).toBeNull();
+    expect(plan.blocks[0].config).toBe("plain");
+    expect(plan.blocks[0].conditionalVisibility).toBeNull();
+    expect(plan.blocks[0].validation).toBe(true);
+  });
+
+  it("batches shuffled containers by root-to-descendant depth exactly once", () => {
+    const rows = sourceRows();
+    rows.containers = [
+      {
+        id: "grandchild-1",
+        templateVersionId: SOURCE_VERSION_ID,
+        containerType: "section",
+        title: "Grandchild",
+        config: {},
+        sortOrder: 0,
+        pageId: null,
+        parentContainerId: "child-1",
+      },
+      {
+        id: "root-1",
+        templateVersionId: SOURCE_VERSION_ID,
+        containerType: "section",
+        title: "Root",
+        config: {},
+        sortOrder: 0,
+        pageId: "page-1",
+        parentContainerId: null,
+      },
+      {
+        id: "child-1",
+        templateVersionId: SOURCE_VERSION_ID,
+        containerType: "section",
+        title: "Child",
+        config: {},
+        sortOrder: 0,
+        pageId: null,
+        parentContainerId: "root-1",
+      },
+    ];
+    rows.blocks[0].containerId = "grandchild-1";
+
+    const plan = buildVersionClonePlan({
+      sourceRows: rows,
+      newVersionId: NEW_VERSION_ID,
+      generateId: idGenerator([
+        "new-page-1",
+        "new-grandchild-1",
+        "new-root-1",
+        "new-child-1",
+        "new-block-1",
+        "new-option-1",
+      ]),
+    });
+
+    expect(plan.containerBatches).toHaveLength(3);
+    expect(plan.containerBatches.map((batch) => batch.map((row) => row.id))).toEqual([
+      ["new-root-1"],
+      ["new-child-1"],
+      ["new-grandchild-1"],
+    ]);
+    expect(plan.containerBatches[1][0].parentContainerId).toBe("new-root-1");
+    expect(plan.containerBatches[2][0].parentContainerId).toBe("new-child-1");
+
+    const flattened = plan.containerBatches.flat();
+    expect(flattened).toHaveLength(rows.containers.length);
+    expect(new Set(flattened.map((row) => row.id)).size).toBe(rows.containers.length);
+    expect(plan.containerBatches.every((batch) => batch.length > 0)).toBe(true);
+  });
+
+  it("rejects missing container parents and container cycles", () => {
+    const cases: Array<{ name: string; parentById: Record<string, string | null> }> = [
+      {
+        name: "missing parent",
+        parentById: { "section-1": "missing-container", "group-1": "section-1" },
+      },
+      {
+        name: "self-parent",
+        parentById: { "section-1": "section-1", "group-1": "section-1" },
+      },
+      {
+        name: "two-node cycle",
+        parentById: { "section-1": "group-1", "group-1": "section-1" },
+      },
+      {
+        name: "longer cycle",
+        parentById: { "section-1": "group-1", "group-1": "third-1", "third-1": "section-1" },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const rows = sourceRows();
+      if (testCase.parentById["third-1"] !== undefined) {
+        rows.containers.push({
+          id: "third-1",
+          templateVersionId: SOURCE_VERSION_ID,
+          containerType: "section",
+          title: "Third",
+          config: {},
+          sortOrder: 0,
+          pageId: null,
+          parentContainerId: testCase.parentById["third-1"],
+        });
+      }
+      rows.containers = rows.containers.map((container) => ({
+        ...container,
+        pageId: null,
+        parentContainerId: testCase.parentById[container.id] ?? null,
+      }));
+
+      expect(
+        () =>
+          buildVersionClonePlan({
+            sourceRows: rows,
+            newVersionId: NEW_VERSION_ID,
+            generateId: idGenerator([
+              "new-page-1",
+              "new-section-1",
+              "new-group-1",
+              "new-third-1",
+              "new-block-1",
+              "new-option-1",
+            ]),
+          }),
+        testCase.name,
+      ).toThrow(VersionClonePlanError);
+    }
   });
 });
