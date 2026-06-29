@@ -1,4 +1,4 @@
-# Phase 3A-4D2 — Publish Transaction, Snapshot Persistence, and Superseding
+# Phase 3A-4D3 — Create Draft from Published or Superseded Version
 
 Continue in:
 
@@ -13,7 +13,7 @@ Mode: Agent / Go
 Reasoning: highest available
 ```
 
-Implement **Phase 3A checkpoint 3A-4D2 only**.
+Implement **Phase 3A checkpoint 3A-4D3 only**.
 
 This checkpoint must be implemented on a temporary review branch, verified, committed, and pushed automatically. It must not be merged into `main`.
 
@@ -21,19 +21,26 @@ This checkpoint must be implemented on a temporary review branch, verified, comm
 
 ## Objective
 
-Implement the authenticated publish mutation that:
+Implement the authenticated mutation that creates a new draft version from an existing published or superseded version, respecting the one-draft-per-template invariant.
 
-1. validates the complete draft definition inside the publish transaction;
-2. builds a canonical V1 snapshot from transaction-scoped rows;
-3. computes the exact SHA-256 hash;
-4. persists `snapshot`, `snapshotSchemaVersion = 1`, and `snapshotHash`;
-5. transitions the version status from `DRAFT` to `PUBLISHED`;
-6. sets `publishedAt`;
-7. marks the previous latest published version `SUPERSEDED` if one exists;
-8. handles concurrency;
-9. includes focused tests.
+The new draft must:
 
-Do **not** implement cloning, new draft creation, UI, runtime forms, reports, or PDF work.
+1. resolve ownership of the source version;
+2. require the source to be `PUBLISHED` or `SUPERSEDED`;
+3. reject the operation if the template already has an existing `DRAFT` version;
+4. create a new `FormTemplateVersion` with `versionNumber = max(versionNumber) + 1` and `status = DRAFT`;
+5. deep-clone all pages, containers, blocks, and options from the source version into the new draft;
+6. preserve all block `stableKey` values — stable keys are immutable across versions;
+7. preserve container/block/page `sortOrder` values;
+8. preserve all block config, validation, conditional visibility, required flags, and labels;
+9. preserve all option labels, values, colors, scores, and ordering;
+10. assign new UUIDs to all cloned rows (pages, containers, blocks, options);
+11. set `templateVersionId` on all cloned rows to the new draft version ID;
+12. run the entire operation in one `RepeatableRead` Prisma transaction;
+13. return a safe DTO with the new version metadata (no raw Prisma rows, no user IDs, no snapshot);
+14. include focused tests and documentation.
+
+Do **not** implement UI, builder integration, runtime forms, reports, or PDF work.
 
 ---
 
@@ -50,14 +57,15 @@ The following checkpoints are complete, committed, and pushed:
 - Phase 3A-4B: container CRUD, compatibility, cycle prevention, and ordering.
 - Phase 3A-4C1: block CRUD, immutable stable keys, registry validation, and block ordering.
 - Phase 3A-4C2A: option-capability contract and per-block option-value uniqueness.
-- Phase 3A-4C2B: authenticated option CRUD, capability enforcement, duplicate handling, contiguous option ordering, contextual `single_select.defaultValue`, and atomic default synchronization.
-- Phase 3A-4D1: authenticated whole-draft validation query, deterministic definition-row loader, canonical snapshot V1 builder, recursive JSON canonicalization, SHA-256 snapshot preview hash.
+- Phase 3A-4C2B: option CRUD, capability enforcement, duplicate handling, contextual default, atomic default sync.
+- Phase 3A-4D1: authenticated whole-draft validation query, deterministic row loader, canonical snapshot V1, SHA-256 hash.
+- Phase 3A-4D2: authenticated publish action with snapshot persistence, hash persistence, conditional draft → published transition, prior-version superseding, race guards, P2034 conflict handling.
 
 ---
 
 ## Branch safety
 
-Start from current `main`. Verify clean working tree and that Phase 3A-4D1 is present. Create `review/phase-3a-4d2` only if it does not already exist locally or remotely. Do not overwrite, reset, delete, or reuse an existing review branch. Never switch back to `main` during implementation.
+Start from current `main`. Verify clean working tree and that Phase 3A-4D2 is present. Create `review/phase-3a-4d3` only if it does not already exist locally or remotely. Do not overwrite, reset, delete, or reuse an existing review branch.
 
 ---
 
@@ -69,7 +77,6 @@ Read completely before implementing:
 AGENTS.md
 docs/FORM_BUILDER_DATA_MODEL.md
 docs/FORM_BUILDER_MASTER_SPEC.md
-docs/FORM_BLOCK_CATALOG.md
 docs/PERMISSIONS.md
 docs/SECURITY_CHECKLIST.md
 docs/PROGRESS_LOG.md
@@ -79,21 +86,20 @@ docs/NEXT_PROMPT.md
 app/schema.prisma
 app/main.wasp.ts
 
-app/src/form-templates/definitionRows.ts
-app/src/form-templates/versionValidation.ts
-app/src/form-templates/versionValidationSchemas.ts
-app/src/form-templates/versionValidationOperations.ts
-app/src/form-templates/versionValidationOperations.wasp.ts
-app/src/form-templates/canonicalSnapshot.ts
-app/src/form-templates/definitionAuthorization.ts
 app/src/form-templates/authorization.ts
-app/src/form-templates/lifecycle.ts
-app/src/form-templates/definitionOrdering.ts
-
+app/src/form-templates/definitionAuthorization.ts
+app/src/form-templates/definitionRows.ts
+app/src/form-templates/canonicalSnapshot.ts
+app/src/form-templates/versionValidation.ts
+app/src/form-templates/publishOperations.ts
+app/src/form-templates/publishValidation.ts
+app/src/form-templates/operations.ts
+app/src/form-templates/formTemplates.wasp.ts
+app/src/form-templates/publishOperations.wasp.ts
 app/src/form-templates/*.test.ts
 ```
 
-Reuse established conventions for DTOs, ownership checks, transaction patterns, and error handling.
+Reuse established conventions for DTOs, ownership checks, transaction patterns, error handling, and Prisma error detection.
 
 ---
 
@@ -132,180 +138,125 @@ Do not install packages, add UI, add routes/navigation, implement runtime forms,
 
 ## Required implementation
 
-### 1. Publish action
+### 1. Create-draft action
 
-Create `publishFormTemplateVersion` as an authenticated Wasp action.
+Create `createDraftFromVersion` as an authenticated Wasp action.
 
 **Input:**
 
 ```typescript
 {
-  versionId: string; // UUID
+  sourceVersionId: string; // UUID — the published or superseded version to clone
 }
 ```
 
 Strict Zod validation, UUID check, unknown properties rejected.
 
-**Authorization and lifecycle:**
+### 2. Authorization and lifecycle
 
 - unauthenticated → HTTP 401
-- missing or unowned version → HTTP 404
+- missing or unowned source version → HTTP 404
 - archived template → HTTP 409
-- non-draft version → HTTP 409 (cannot publish a PUBLISHED or SUPERSEDED version)
+- source version is `DRAFT` → HTTP 409 (cannot clone a draft)
 
-**Transaction — all of the following in one `RepeatableRead` transaction using tx:**
+### 3. One-draft-per-template invariant
 
-1. Resolve ownership of the target version.
-2. Assert active draft (template ACTIVE, version DRAFT).
-3. Load all definition rows through `loadDefinitionRows(tx, versionId)`.
-4. Run `validateVersionDefinition(rows)` — if validation fails, return HTTP 400 with the validation issues. Do not partially publish.
-5. Build canonical snapshot with `buildCanonicalSnapshotV1(rows)`.
-6. Compute hash with `hashCanonicalSnapshot(snapshot)`.
-7. Serialize snapshot with `serializeCanonicalSnapshot(snapshot)`.
-8. Persist to version row:
-   - `snapshot = snapshot` as `Prisma.InputJsonValue` (the canonical JSON object, not a serialized string)
-   - `snapshotSchemaVersion = 1`
-   - `snapshotHash = hash`
-   - `status = PUBLISHED`
-   - `publishedAt = new Date()`
+Before creating the new draft, query for existing `DRAFT` versions of the same template through `tx`. If any exist, throw HTTP 409:
 
-   `serializeCanonicalSnapshot(snapshot)` is the byte/string representation used for hashing and tests. It is not the value stored in the Prisma `Json` field.
-9. Within the same transaction, find the previous latest published version for the same template (status `PUBLISHED`, different id, ordered by `versionNumber DESC`) and update it to `SUPERSEDED`.
-10. Return the publish result DTO.
+```
+A draft version already exists for this template.
+```
 
-**No time-of-check/time-of-use gap.** Validation, snapshot creation, hashing, and persistence all happen inside the same Prisma transaction.
+This check must happen inside the transaction after ownership resolution.
 
-### 2. Result DTO
+### 4. Version number assignment
+
+Compute the new version number as:
+
+```
+SELECT MAX(versionNumber) FROM FormTemplateVersion WHERE templateId = ?
+```
+
+Add 1. If no versions exist (should not happen since source exists), start at 1.
+
+### 5. Deep clone
+
+Clone all definition rows from the source version to the new draft:
+
+- **FormPageDefinition**: clone `title`, `sortOrder`; assign new UUID; set `templateVersionId` to new draft ID.
+- **FormContainerDefinition**: clone `containerType`, `title`, `config`, `sortOrder`; assign new UUID; set `templateVersionId` to new draft ID; rebuild `pageId` and `parentContainerId` using the new cloned IDs (maintains tree structure).
+- **FormBlockDefinition**: clone all fields including `stableKey` (immutable across versions), `blockType`, `config`, `label`, `required`, `sortOrder`, `conditionalVisibility`, `validation`, `blockImplementationVersion`, `configSchemaVersion`; assign new UUID; set `templateVersionId` to new draft ID; set `containerId` to new cloned container ID.
+- **FormBlockOption**: clone `label`, `value`, `sortOrder`, `color`, `score`; assign new UUID; set `blockId` to new cloned block ID.
+
+### 6. ID mapping
+
+Maintain a mapping from old IDs to new IDs during the clone to correctly reassign:
+- `pageId` on containers (old page → new page)
+- `parentContainerId` on containers (old container → new container)
+- `containerId` on blocks (old container → new container)
+- `blockId` on options (old block → new block)
+
+### 7. Transaction
+
+Use `Prisma.TransactionIsolationLevel.RepeatableRead`. All reads and writes use `tx`. Global Prisma only opens the transaction.
+
+### 8. Result DTO
 
 Use an explicit safe DTO:
 
 ```typescript
-type PublishFormTemplateVersionResult = {
+type CreateDraftFromVersionResult = {
   versionId: string;
+  templateId: string;
   versionNumber: number;
-  status: "PUBLISHED";
-  publishedAt: Date;
-  snapshotSchemaVersion: 1;
-  snapshotHash: string;
-  previousPublishedVersionSuperseded: boolean;
-  validation: {
-    valid: true;
-    issues: [];
-    counts: { pages: number; containers: number; blocks: number; options: number };
+  status: "DRAFT";
+  sourceVersionId: string;
+  counts: {
+    pages: number;
+    containers: number;
+    blocks: number;
+    options: number;
   };
 };
 ```
 
-Do not return user IDs, raw template relations, raw Prisma records, the full snapshot, or internal exception objects.
+Do not return user IDs, raw template relations, raw Prisma records, or internal objects.
 
-### 3. Concurrency
+### 9. Error handling
 
-Two concurrent publishes of the same draft must not both succeed. Requirements:
+- Template-lookup/ownership errors: 401/404/409 as established.
+- Existing-draft detection: 409.
+- Prisma transaction conflict (P2034): 409 with retry message.
+- Unrelated Prisma errors: propagate unchanged.
+- Existing `HttpError`: not remapped.
 
-1. Ownership and active-draft resolution must happen inside the transaction — no pre-check outside the transaction.
-2. Validation and snapshot creation happen inside the same transaction.
-3. The current-version status update must use a conditional update scoped by at least:
-   ```typescript
-   {
-     id: versionId,
-     templateId,
-     status: DRAFT,
-   }
-   ```
-4. `updateMany` result count must equal exactly 1. A count of 0 maps to HTTP 409.
-5. Known Prisma transaction serialization/write-conflict errors, including applicable `P2034` failures, map to HTTP 409 or are retried only by opening a completely new bounded transaction.
-6. No retry inside an already-aborted transaction.
-7. Previous published-version superseding is in the same transaction.
-8. Any current-version or previous-version conditional update failure rolls back the entire transaction.
-9. The persisted snapshot is the canonical JSON object (`Prisma.InputJsonValue`), not a serialized string.
-10. The hash is calculated from `serializeCanonicalSnapshot` — the deterministic serialized representation of that object.
+### 10. Required tests
 
-### 4. Previous version superseding
+Use existing Vitest tooling. Test:
 
-- Find exactly one previous `PUBLISHED` version for the same template (status = `PUBLISHED`, id != current version id, order by `versionNumber DESC`, take 1).
-- If found, update its status to `SUPERSEDED`.
-- If no previous published version exists, `previousPublishedVersionSuperseded = false`.
-
-Do not mark `SUPERSEDED` versions as `PUBLISHED` or vice versa.
-
-### 5. Wasp declaration
-
-Create a focused Wasp spec file (e.g., `publishOperations.wasp.ts`) containing:
-
-```
-publishFormTemplateVersion
-action
-auth: true
-entities: FormTemplate, FormTemplateVersion, FormPageDefinition, FormContainerDefinition, FormBlockDefinition, FormBlockOption
-```
-
-Register the spec exactly once in `app/main.wasp.ts`. Do not add pages, routes, or navigation.
-
-### 6. Do NOT implement
-
-- Cloning a draft into another draft.
-- Creating a new draft from a historical published version.
-- Partial publishing.
-- Automatic draft creation after publish.
-- Draft label fields (none exist on the model).
-- UI, runtime forms, reports, PDF, drag-and-drop.
-
----
-
-## Required tests
-
-Use existing Vitest tooling only.
-
-### Input and authorization
-
-- valid UUID input accepted; invalid UUID rejected; unknown property rejected.
-- unauthenticated rejected before transaction.
-- unowned version returns 404.
-- archived template returns 409.
-- published version returns 409.
-- superseded version returns 409.
-- all database reads/mutations use `tx`, never global Prisma.
-
-### Valid publish
-
-- minimal valid draft publishes successfully.
-- version status becomes `PUBLISHED`.
-- `publishedAt` is set to a recent timestamp.
-- `snapshotSchemaVersion = 1`.
-- `snapshotHash` is exactly 64 lowercase hex characters.
-- `previousPublishedVersionSuperseded` is `false` for first publish.
-- result DTO contains no user IDs, raw relations, or snapshot data.
-
-### Superseding
-
-- publishing a second draft (version 2) after version 1 was published.
-- version 1 status becomes `SUPERSEDED`.
-- version 2 status becomes `PUBLISHED`.
-- `previousPublishedVersionSuperseded` is `true`.
-- only one version is `PUBLISHED` at a time per template.
-- publishing a third draft supersedes version 2, not version 1.
-
-### Validation during publish
-
-- draft with no pages fails with validation issues returned.
-- draft with no blocks fails.
-- draft with validation issues does not transition status.
-- snapshot fields remain null/unset after failed publish.
-
-### Concurrency
-
-- concurrent publish of same draft: one succeeds, one returns 409.
-
-### Snapshot integrity
-
-- same logical draft always produces the same snapshot hash.
-- changed definition changes the hash.
-- snapshot persisted matches snapshot returned by `buildCanonicalSnapshotV1` for the same rows.
-- `serializeCanonicalSnapshot` of persisted snapshot produces output matching the stored serialized form.
-
-### Regression
-
-All existing tests must remain enabled and pass. Do not weaken existing tests.
+- valid input produces new draft with incremented version number;
+- invalid UUID rejected;
+- unauthenticated → 401;
+- unowned source version → 404;
+- archived template → 409;
+- source version is DRAFT → 409;
+- existing draft in template → 409;
+- all definition rows are cloned (pages, containers, blocks, options);
+- stable keys are preserved across clone;
+- new UUIDs assigned to all cloned rows;
+- tree structure preserved (page → container → block → option relationships);
+- `templateVersionId` set to new draft on all cloned rows;
+- sort orders preserved;
+- block config, validation, conditional visibility preserved;
+- option labels, values, colors, scores preserved;
+- result DTO contains expected counts;
+- result DTO does not expose user IDs or raw relations;
+- exactly one transaction with RepeatableRead;
+- all reads/writes use tx, not global Prisma;
+- P2034 mapped to 409;
+- unrelated Prisma errors propagate;
+- existing HttpError not remapped;
+- all existing form-template and registry tests remain enabled and pass.
 
 ---
 
@@ -313,65 +264,61 @@ All existing tests must remain enabled and pass. Do not weaken existing tests.
 
 Run:
 
-```bash
+```
 cd ~/dev/inspection-app/app
-npx --no-install vitest run --config src/form-templates/vitest.config.ts --reporter=verbose
-npx --no-install vitest run --config src/form-builder/registry/vitest.config.ts --reporter=verbose
+
+npx --no-install vitest run \
+  --config src/form-templates/vitest.config.ts \
+  --reporter=verbose
+
+npx --no-install vitest run \
+  --config src/form-builder/registry/vitest.config.ts \
+  --reporter=verbose
 ```
 
 Then:
 
-```bash
+```
 cd ~/dev/inspection-app
+
 git diff --check
 make check
-cd app && npx prisma validate
+
+cd ~/dev/inspection-app/app
+npx prisma validate
 timeout 120 wasp start
 ```
 
 Inspect restricted scope:
 
-```bash
-git diff -- app/schema.prisma app/migrations app/package.json app/src/form-builder/registry app/src/clients app/src/properties app/src/inspections spikes
+```
+cd ~/dev/inspection-app
+
+git diff -- \
+  app/schema.prisma \
+  app/migrations \
+  app/package.json \
+  app/src/form-builder/registry \
+  app/src/clients \
+  app/src/properties \
+  app/src/inspections \
+  spikes
 ```
 
-Must be empty.
+The restricted diff must be empty.
 
 ---
 
 ## Documentation
 
-After implementation and verification pass, update:
+After implementation and verification pass:
 
-- `docs/PROGRESS_LOG.md` — record completion of publish action, snapshot persistence, and superseding.
-- `docs/TODO.md` — mark Phase 3A-4D2 work complete.
-- `docs/NEXT_PROMPT.md` — write the next prompt for Phase 3A-4E (or equivalent next checkpoint).
+- `docs/PROGRESS_LOG.md`: record the create-draft action.
+- `docs/TODO.md`: mark Phase 3A-4D3 complete.
+- `docs/NEXT_PROMPT.md`: write a substantial implementation-ready prompt for Phase 3A-4E (template version history query, soft-delete considerations, or the next prioritized checkpoint per the roadmap).
 
 ---
 
 ## Commit and push
 
-Only after all required checks pass:
-
-1. Confirm branch is `review/phase-3a-4d2`.
-2. Stage explicit intended files only. Do not use `git add .` or `git add -A`.
-3. Inspect `git diff --cached` for unrelated or restricted files.
-4. Commit: `git commit -m "feat(3a): add publish transaction with snapshot persistence and superseding"`
-5. Push: `git push -u origin review/phase-3a-4d2`
-
-Do not push to `main`, merge, open/merge a PR, amend, rebase, squash, reset, or force-push.
-
----
-
-## Final state
-
-The final state must be:
-
-```
-branch: review/phase-3a-4d2
-working tree: clean
-changes: committed and pushed only to the review branch
-main: untouched
-```
-
-Do not implement Phase 3A-4D2 now. This prompt is for the next checkpoint.
+After all checks pass, commit on `review/phase-3a-4d3` and push to `origin/review/phase-3a-4d3`. Do not push to `main`, merge, amend, rebase, squash, reset, force-push, delete branches, or open/merge a pull request automatically.

@@ -28,6 +28,7 @@ export default defineConfig({
       "src/form-templates/canonicalSnapshot.test.ts",
       "src/form-templates/versionValidation.test.ts",
       "src/form-templates/versionValidationOperations.test.ts",
+      "src/form-templates/publishOperations.test.ts",
     ],
     environment: "node",
     reporters: ["default"],

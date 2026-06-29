@@ -30,6 +30,29 @@ Phase 3A-4D or Phase 3A-4E — Whole-draft definition validation, version clonin
 
 ## Completed
 
+- Phase 3A-4D2 publish transaction with snapshot persistence and superseding completed 2026-06-29.
+
+- Implemented authenticated publish action `publishFormTemplateVersion` with strict Zod input (UUID, unknown-property rejection).
+- Unauthenticated → 401; unowned version → 404; archived template → 409; non-draft target (published/superseded) → 409.
+- The complete publish flow runs in one `RepeatableRead` Prisma transaction: ownership resolution, draft assertion, definition-row loading, whole-draft validation, canonical snapshot V1 construction, deterministic serialization, SHA-256 hashing, prior-published-version integrity inspection, conditional target publication, conditional superseding, and post-write confirmation.
+- Validation failure throws structured HTTP 400 with code `FORM_TEMPLATE_VERSION_INVALID`, sorted issues, and counts. No snapshot persistence or writes occur before validation succeeds.
+- Canonical snapshot is persisted as a Prisma `Json` object (not a string) via `JSON.parse(serializeCanonicalSnapshot(snapshot))`. The `snapshot` field receives the JSON object; the serialized string is used only for hashing.
+- Snapshot hash is computed from the exact serialized bytes using `hashCanonicalSnapshot` (SHA-256, 64 lowercase hex chars). Hash is stored in `snapshotHash` alongside `snapshotSchemaVersion: 1`.
+- One authoritative `publishedAt` timestamp is captured via `new Date()` and used for both persistence and the result DTO.
+- Prior published version inspection loads candidates with `orderBy: [{ versionNumber: "desc" }, { id: "asc" }]` and `take: 2`. Zero candidates = first publication; one candidate = supersede if lower version number; two candidates = HTTP 409 `FORM_TEMPLATE_MULTIPLE_PUBLISHED_VERSIONS`; one candidate with >= target version number = HTTP 409 `FORM_TEMPLATE_PUBLISH_ORDER_INVALID`.
+- Target publication uses conditional `updateMany` with where `{ id, templateId, status: DRAFT }` requiring `count === 1`. If count is zero or not exactly one, throws HTTP 409. This is the authoritative race guard.
+- Superseding uses conditional `updateMany` with where `{ id: prior.id, templateId, status: PUBLISHED }` setting `status: SUPERSEDED` only. Prior `publishedAt`, snapshot, snapshot schema version, and snapshot hash are never overwritten. Requires `count === 1`; otherwise throws HTTP 409 and the entire transaction rolls back.
+- Post-write confirmation re-reads the target version through `tx` and verifies: `status === PUBLISHED`, `publishedAt` non-null, `snapshotSchemaVersion === 1`, `snapshotHash` non-null with 64-hex format. Failed confirmation throws HTTP 409.
+- P2034 transaction conflict errors are mapped to HTTP 409 ("The form template version changed during publishing. Retry the operation."). Unrelated Prisma errors propagate unchanged. Existing `HttpError` instances are not remapped. No automatic retries are implemented.
+- Safe result DTO (`PublishFormTemplateVersionResult`) includes `versionId`, `versionNumber`, `status: PUBLISHED`, `publishedAt`, `snapshotSchemaVersion: 1`, `snapshotHash`, `previousPublishedVersionSuperseded`, `previousPublishedVersionId`, and `validation` with `valid: true`, empty issues, and counts. No user IDs, raw template relations, raw Prisma records, the full snapshot, serialized snapshot, or internal error objects are exposed.
+- Added Wasp spec (`publishOperations.wasp.ts`) declaring `publishFormTemplateVersion` as `action` with `auth: true` and all six form-template entities. Registered in `app/main.wasp.ts`.
+- Added focused Vitest coverage: input validation and authorization (8 tests), transaction boundaries (5 tests), structured validation failure (4 tests), first publication (9 tests), superseding (5 tests), published-state corruption (2 tests), race and conflict handling (6 tests), snapshot integrity (5 tests), confirmation and safe result (6 tests), concurrency coverage note (1 test). Total new tests: 51.
+- Real concurrent database integration testing was not performed. Unit tests use Prisma error-code mocking. P2034 and conditional `updateMany.count` zero checks are tested via mocking.
+- All existing tests remain enabled and pass: form-template (418 tests total: 367 existing + 51 new), registry (38 tests).
+- Checks run: `git diff --check` passed, `make check` passed, `wasp start` compiled successfully (SDK built; DB connection not available locally).
+- Restricted diff empty: no schema, migration, registry, client, property, inspection, or spike changes.
+- Builder UI, drag-and-drop, runtime forms, version cloning, new-draft creation, reports, and PDF work remain deferred.
+
 - Phase 3A-4D1 whole-draft validation and canonical snapshot foundation completed 2026-06-29.
 
 - Implemented reusable transaction-scoped normalized definition-row loader (`definitionRows.ts`) that loads one authoritative version's pages, containers, blocks, and options through the supplied Prisma tx client with deterministic `sortOrder ASC, id ASC` ordering. No global Prisma reads. Returns raw rows, not an assembled tree.

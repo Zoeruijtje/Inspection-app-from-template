@@ -196,7 +196,7 @@
 - [x] Phase 3A-4D1 canonical snapshot V1 builder (deterministic field order, sorted arrays)
 - [x] Phase 3A-4D1 SHA-256 snapshot hashing (node:crypto, no deps)
 - [x] Phase 3A-4D1 authenticated public validation query (RepeatableRead, safe DTO)
-- [ ] Phase 3A-4D2 publish transaction with full validation, snapshot persistence, and superseding
+- [x] Phase 3A-4D2 publish transaction with full validation, snapshot persistence, and superseding
 
 ## Phase 3B — Basic template management
 
