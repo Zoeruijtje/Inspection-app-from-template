@@ -198,7 +198,7 @@
 - [x] Phase 3A-4D1 authenticated public validation query (RepeatableRead, safe DTO)
 - [x] Phase 3A-4D2 publish transaction with full validation, snapshot persistence, and superseding
 - [x] Phase 3A-4D3 create new draft from published/superseded version with source snapshot integrity verification and deep definition cloning
-- [ ] Phase 3A-4E version history/query hardening and lifecycle cleanup for template-management readiness
+- [x] Phase 3A-4E version history/query hardening and lifecycle cleanup for template-management readiness
 
 ## Phase 3B — Basic template management
 

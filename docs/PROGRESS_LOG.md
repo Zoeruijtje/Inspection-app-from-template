@@ -21,16 +21,31 @@
 - Phase 3A-4C2B option CRUD, capability enforcement, duplicate-value handling, contiguous ordering, contextual default validation, and atomic default maintenance are implemented.
 - Phase 3A-4D3 authenticated create-draft-from-version operation with source snapshot integrity verification and deep definition cloning is implemented.
 - Phase 3A-4D3 repair completed: JSON cloning, cycle-safe container batching, and post-write draft confirmation hardened.
+- Phase 3A-4E authoritative authenticated version-history read model, lifecycle affordance derivation, and integrity-state detection are implemented.
 
 ## Next milestone
 
-Phase 3A-4E — version history/query hardening and lifecycle cleanup around draft creation, published immutability surfacing, and template-management backend readiness. Do not start builder UI, drag-and-drop, runtime execution, reports, or PDF work outside these backend foundation checkpoints.
+Phase 3B-1 — Template List, Template Detail, and Version Workflow UI. Start template-management UI using the Phase 3A backend contracts. Do not start builder canvas, drag-and-drop, runtime forms, reports, PDF behavior, template duplication, rollback, or version deletion.
 
 ## In progress
 
 - None.
 
 ## Completed
+
+- Phase 3A-4E version history read model and lifecycle summary completed 2026-06-29.
+
+- Implemented authenticated Wasp query `getFormTemplateVersionHistory` with strict Zod input (`templateId` UUID, unknown-property rejection), operation-level `auth: true`, and one ownership-scoped template read by `{ id, userId }`.
+- Added pure `summarizeFormTemplateVersionHistory` helper that imports no Wasp server, Prisma client instance, or operation context. It deterministically sorts versions by `versionNumber DESC` and code-unit `id ASC`, identifies `draftVersionId`, `currentPublishedVersionId`, `latestVersionNumber`, and derives `canCreateDraft`.
+- The safe history DTO exposes only template lifecycle, safe version metadata, `isEditable`, `isReadOnly`, and per-version draft-source affordances. It returns no user IDs, raw template relations, snapshots, serialized snapshots, raw Prisma rows, registry objects, or internal consistency objects.
+- Lifecycle affordances are authoritative for the future UI: only an `ACTIVE` template's `DRAFT` version is editable; archived-template drafts are read-only; `PUBLISHED` and `SUPERSEDED` are always read-only; draft creation is allowed only for active templates with no draft and at least one published or superseded source.
+- Integrity-state detection rejects zero versions, multiple drafts, multiple current published versions, duplicate version IDs, duplicate version numbers, non-positive version numbers, and malformed version statuses. Public query translation returns HTTP 409 with code `FORM_TEMPLATE_VERSION_HISTORY_INVALID`, `templateId`, and issues sorted by `code ASC`, `message ASC`.
+- Existing immutability rules remain unchanged: definition authorization already rejects `PUBLISHED` and `SUPERSEDED` writes with 409; draft-only deletion policy rejects any published or superseded history; metadata update regression coverage verifies `updateFormTemplate` changes only template rows and does not touch version rows; no generic version mutation action was added.
+- Added Wasp spec `versionHistoryOperations.wasp.ts`, registered it exactly once in `app/main.wasp.ts`, and kept the checkpoint backend-only with no routes, pages, UI, schema changes, migrations, registry changes, or package changes.
+- Tests added for input/auth/read behavior, deterministic history, current published status, max version number, timestamps and safe metadata, active/archived affordances, draft-source affordances, only-draft history, lifecycle corruption, structured 409 sorting, safe DTO exclusion, metadata-update immutability, and absence of generic version mutation exports.
+- Verification: form-template Vitest passed (`31` files, `490` tests); registry self-check passed (`1` file, `38` tests); `git diff --check` passed; `make check` passed; `npx prisma validate` failed without `DATABASE_URL` in the shell, then passed with the real local Wasp dev DB URL from container `wasp-dev-db-InspectionApp-349b0351ab`; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no configured script output.
+- Docker state: `wasp-dev-db-InspectionApp-349b0351ab` (`postgres:18`) is running on port 5432. Sandboxed `timeout 180 wasp start` compiled, set up the database, built the SDK, and then failed the DB connection check with "Can not connect to database"; an escalated rerun was blocked by the approval system before execution due usage limits. Wasp still reports its existing schema-change warning suggesting `wasp db migrate-dev`; no schema or migration change was made in this checkpoint.
+- Restricted scope preserved: no diff in `app/schema.prisma`, `app/migrations`, `app/package.json`, `app/src/form-builder/registry`, `app/src/clients`, `app/src/properties`, `app/src/inspections`, or `spikes`.
 
 - Phase 3A-4D3 repair completed 2026-06-29.
 
