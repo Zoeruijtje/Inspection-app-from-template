@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router";
 import { getFormTemplates, useQuery } from "wasp/client/operations";
+import { routes } from "wasp/client/router";
 import {
   Archive,
   FileText,
@@ -232,7 +234,14 @@ function TemplateListItem({
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-start gap-2">
             <h2 className="text-foreground min-w-0 break-words text-base font-semibold">
-              {template.name}
+              <Link
+                to={routes.FormTemplateDetailRoute.build({
+                  params: { templateId: template.id },
+                })}
+                className="rounded-sm underline-offset-4 hover:underline focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+              >
+                {template.name}
+              </Link>
             </h2>
             <LifecycleBadge lifecycleStatus={template.lifecycleStatus} />
           </div>

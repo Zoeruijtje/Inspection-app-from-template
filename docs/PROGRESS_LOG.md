@@ -23,16 +23,36 @@
 - Phase 3A-4D3 repair completed: JSON cloning, cycle-safe container batching, and post-write draft confirmation hardened.
 - Phase 3A-4E authoritative authenticated version-history read model, lifecycle affordance derivation, and integrity-state detection are implemented.
 - Phase 3B-1A authenticated template list and create-template UI is implemented.
+- Phase 3B-1B authenticated template detail, metadata editing, and read-only version history UI is implemented.
 
 ## Next milestone
 
-Phase 3B-1B — Template Detail and Version History UI. Add `/templates/:templateId`, links from template rows, metadata display/editing, lifecycle/version summary, and read-only version history UI. Do not add validate, publish, clone, archive, restore, delete, builder canvas, drag-and-drop, runtime forms, reports, or PDF behavior.
+Phase 3B-1C — Template Lifecycle and Version Workflow Actions. Add UI for draft validation, publishing valid drafts, validation feedback, create-draft-from-version, archive, restore, and draft-only safe delete. Do not add builder canvas, page/container/block editing, drag-and-drop, runtime forms, reports, or PDF behavior.
 
 ## In progress
 
 - None.
 
 ## Completed
+
+- Phase 3B-1B template detail and version history UI completed 2026-06-30.
+
+- Added authenticated Wasp route `FormTemplateDetailRoute` at `/templates/:templateId` in the existing `formTemplatesSpec`; no second template spec was created and `app/main.wasp.ts` was not modified.
+- Updated `/templates` list items so the template name is an accessible React Router link built with `routes.FormTemplateDetailRoute.build({ params: { templateId } })`, with visible focus styling and no whole-row click target.
+- Implemented `TemplateDetailPage.tsx` using `useParams` for `templateId`; missing or empty params render a safe page error and do not mount either detail query. Valid params load only `getFormTemplateById({ templateId })` and `getFormTemplateVersionHistory({ templateId })`.
+- Added coordinated detail/history query states: one loading state while either query is required, page-level retry for both queries, 404-oriented not-found state, defensive empty-history state, and safe error messaging without raw stack traces.
+- Implemented metadata display for name, description, category, tags, created/updated dates, lifecycle badge, archived read-only notice, and summary values for draft version, current published version, latest version, and total versions.
+- Implemented `TemplateMetadataDialog.tsx` using existing `updateFormTemplate` only. The dialog populates from loaded metadata on open, trims fields, reuses `parseTemplateTags`, validates required name client-side, prevents duplicate submit, keeps entered values on backend failure, closes only after mutation success, and separates post-success refresh warnings from mutation failure.
+- Archived templates remain readable and do not show an enabled edit action. If an active template becomes archived while the dialog is open, the backend conflict remains visible, authoritative state is refetched, and the open dialog switches to read-only instead of silently claiming success.
+- Implemented read-only version history from the authoritative `getFormTemplateVersionHistory` DTO, preserving backend order and using `versions[].isEditable`, `versions[].isReadOnly`, and `versions[].canCreateDraftFromThisVersion` for badges/informational labels. No per-version detail queries, snapshot contents, lifecycle mutations, or builder actions were added.
+- Added responsive desktop table and mobile stacked version cards with contained long names, descriptions, tags, and snapshot hashes. Browser visual verification at 375/768/1440 remains manual because no browser automation connector was exposed and `agent-browser` is not installed.
+- Added pure `templateDetailUi.ts` helpers and `templateDetailUi.test.ts` coverage for lifecycle/status/editability labels, defensive read-only handling, version summary formatting, optional metadata display, dates, and nullable snapshot metadata.
+- React event safety audited for new and touched template inputs: event values are captured synchronously before functional state updates; no `event.target` or `event.currentTarget` is referenced inside a functional updater.
+- Verification: form-template Vitest passed (`33` files, `531` tests); registry Vitest passed (`1` file, `38` tests); `git diff --check` passed before docs; `make check` passed; explicit `npx prisma validate` first failed because `DATABASE_URL` was unset, then passed with real local Wasp dev DB URL `postgresql://postgres:devpass@localhost:5432/postgres`; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no script output.
+- Wasp startup: escalated `timeout 180 wasp start` first failed on a typed dynamic Wasp `Link`; switching the dynamic template name link to React Router `Link` with the generated Wasp route URL fixed it. The rerun compiled the Wasp project, set up the database, built the SDK, started Vite on port 3000, started the backend on port 3001, started pg-boss, served `/templates` and `/templates/:templateId` operation requests with 200 responses, and stayed healthy until timeout exit `124`. Wasp still reports the existing schema-change warning suggesting `wasp db migrate-dev`; no schema or migration change was made in this checkpoint.
+- Database status: sandboxed Docker inspection was denied by socket permissions; escalated Docker inspection initially showed no running containers. The existing `wasp-dev-db-InspectionApp-349b0351ab` volume was reused. An attached `wasp db start` run confirmed Postgres readiness but was interrupted and shut down its transient container; the volume was then started in a detached `postgres:18` container mounted at `/var/lib/postgresql`, and `pg_isready` reports accepting connections. No database reset, volume deletion, or test-data deletion was performed.
+- Restricted scope preserved: no diff in `app/schema.prisma`, `app/migrations`, `app/package.json`, `app/package-lock.json`, `app/src/form-builder/registry`, `app/src/clients`, `app/src/properties`, `app/src/inspections`, `app/src/projects`, or `spikes`.
+- Phase 3B-1C lifecycle actions, validate/publish/create-draft/archive/restore/delete UI, builder canvas, page/container/block editing, drag-and-drop, runtime forms, reports, and PDF behavior remain unimplemented.
 
 - Phase 3B-1A template list and create-template UI completed 2026-06-30.
 
