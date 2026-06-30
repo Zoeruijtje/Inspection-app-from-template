@@ -107,9 +107,10 @@ export function TemplatesPage() {
                   <Search className="text-muted-foreground pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2" />
                   <Input
                     value={searchTerm}
-                    onChange={(event) =>
-                      setSearchTerm(event.currentTarget.value)
-                    }
+                    onChange={(event) => {
+                      const value = event.currentTarget.value;
+                      setSearchTerm(value);
+                    }}
                     placeholder="Search templates"
                     className="pl-9"
                     aria-label="Search templates"
@@ -142,13 +143,15 @@ export function TemplatesPage() {
               </div>
 
               <div className="flex flex-col gap-2 text-sm md:flex-row md:items-center">
-                <p className="text-muted-foreground">
-                  {formatTemplateCount({
-                    visibleCount: visibleTemplates.length,
-                    totalCount: templates.length,
-                    filtersAreActive,
-                  })}
-                </p>
+                {!templatesQuery.isLoading && !templatesQuery.error && (
+                  <p className="text-muted-foreground">
+                    {formatTemplateCount({
+                      visibleCount: visibleTemplates.length,
+                      totalCount: templates.length,
+                      filtersAreActive,
+                    })}
+                  </p>
+                )}
                 {filtersAreActive && (
                   <Button
                     type="button"

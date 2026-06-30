@@ -91,34 +91,45 @@ export function TemplateFormDialog({
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      setNameError(null);
-      setFormError(null);
+    setIsSubmitting(true);
+    setNameError(null);
+    setFormError(null);
 
+    try {
       await createFormTemplate({
         name,
         description: normalizeOptionalText(formState.description),
         category: normalizeOptionalText(formState.category),
         tags: parseTemplateTags(formState.tags),
       });
-
-      await onCreated();
-      toast({ title: "Template created" });
-      setFormState(emptyTemplateFormState);
-      setNameError(null);
-      setFormError(null);
-      onOpenChange(false);
     } catch (error) {
-      const message = getSafeErrorMessage(
-        error,
-        "Unable to create template.",
-      );
+      const message = getSafeErrorMessage(error, "Unable to create template.");
       setFormError(message);
       toast({
         title: "Template not created",
         description: message,
         variant: "destructive",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+    setFormState(emptyTemplateFormState);
+    setNameError(null);
+    setFormError(null);
+    onOpenChange(false);
+    toast({ title: "Template created" });
+
+    try {
+      await onCreated();
+    } catch (error) {
+      const message = getSafeErrorMessage(
+        error,
+        "Template created, but the list could not refresh. Reload the page.",
+      );
+      toast({
+        title: "Template created",
+        description: message,
       });
     } finally {
       setIsSubmitting(false);
@@ -144,9 +155,10 @@ export function TemplateFormDialog({
               ref={nameInputRef}
               value={formState.name}
               onChange={(event) => {
+                const value = event.currentTarget.value;
                 setFormState((current) => ({
                   ...current,
-                  name: event.currentTarget.value,
+                  name: value,
                 }));
                 if (nameError) {
                   setNameError(null);
@@ -174,12 +186,13 @@ export function TemplateFormDialog({
             <Textarea
               id="new-template-description"
               value={formState.description}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.currentTarget.value;
                 setFormState((current) => ({
                   ...current,
-                  description: event.currentTarget.value,
-                }))
-              }
+                  description: value,
+                }));
+              }}
               maxLength={2000}
               className="min-h-28"
             />
@@ -190,12 +203,13 @@ export function TemplateFormDialog({
             <Input
               id="new-template-category"
               value={formState.category}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.currentTarget.value;
                 setFormState((current) => ({
                   ...current,
-                  category: event.currentTarget.value,
-                }))
-              }
+                  category: value,
+                }));
+              }}
               maxLength={120}
             />
           </div>
@@ -205,12 +219,13 @@ export function TemplateFormDialog({
             <Input
               id="new-template-tags"
               value={formState.tags}
-              onChange={(event) =>
+              onChange={(event) => {
+                const value = event.currentTarget.value;
                 setFormState((current) => ({
                   ...current,
-                  tags: event.currentTarget.value,
-                }))
-              }
+                  tags: value,
+                }));
+              }}
               placeholder="NEN 2767, woning, onderhoud"
             />
           </div>
