@@ -202,8 +202,9 @@
 
 ## Phase 3B — Basic template management
 
-- [ ] Template list page with search and status badges
-- [ ] Create template dialog
+- [x] Phase 3B-1A Template list and create-template UI
+- [ ] Phase 3B-1B Template detail and version history UI
+- [ ] Phase 3B-1C Validate, publish, create-draft, archive, restore, and safe-delete UI
 - [ ] Duplicate template (deep copy all blocks)
 - [ ] Archive / unarchive template
 - [ ] Version list on template detail

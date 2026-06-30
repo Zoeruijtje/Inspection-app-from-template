@@ -22,16 +22,31 @@
 - Phase 3A-4D3 authenticated create-draft-from-version operation with source snapshot integrity verification and deep definition cloning is implemented.
 - Phase 3A-4D3 repair completed: JSON cloning, cycle-safe container batching, and post-write draft confirmation hardened.
 - Phase 3A-4E authoritative authenticated version-history read model, lifecycle affordance derivation, and integrity-state detection are implemented.
+- Phase 3B-1A authenticated template list and create-template UI is implemented.
 
 ## Next milestone
 
-Phase 3B-1 — Template List, Template Detail, and Version Workflow UI. Start template-management UI using the Phase 3A backend contracts. Do not start builder canvas, drag-and-drop, runtime forms, reports, PDF behavior, template duplication, rollback, or version deletion.
+Phase 3B-1B — Template Detail and Version History UI. Add `/templates/:templateId`, links from template rows, metadata display/editing, lifecycle/version summary, and read-only version history UI. Do not add validate, publish, clone, archive, restore, delete, builder canvas, drag-and-drop, runtime forms, reports, or PDF behavior.
 
 ## In progress
 
 - None.
 
 ## Completed
+
+- Phase 3B-1A template list and create-template UI completed 2026-06-30.
+
+- Added authenticated Wasp route `FormTemplatesRoute` at `/templates` in the existing `formTemplatesSpec`; `formTemplatesSpec` was already registered in `app/main.wasp.ts`, so the main spec file was not modified.
+- Added the authenticated Templates navigation entry to `demoNavigationitems`, pointing to `routes.FormTemplatesRoute.to`; public marketing navigation was left unchanged.
+- Implemented `TemplatesPage.tsx` with a work-focused list page, reusable list/list-item/empty-state components, responsive search and lifecycle controls, result-count summary, lifecycle badges, draft/current-published version badges, version count, category, tags, descriptions, and updated dates from `getFormTemplates`.
+- Implemented `TemplateFormDialog.tsx` for `createFormTemplate` with labelled fields, client-side required name validation, trimmed optional metadata, comma-separated tag parsing, duplicate-submit prevention, pending state, backend error display, success toast, query refetch, and success-only close/reset behavior.
+- Added pure `templateListUi.ts` helpers for search normalization, combined search/lifecycle filtering, tag parsing, date formatting, and safe user-facing error extraction. Added `templateListUi.test.ts` and included it in the existing form-template Vitest config.
+- Verification: form-template Vitest passed (`32` files, `517` tests); registry Vitest passed (`1` file, `38` tests); `git diff --check` passed; `make check` passed; explicit `npx prisma validate` first failed because `DATABASE_URL` was not exported, then passed using Wasp's generated local server env; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no script output.
+- Wasp startup: escalated `timeout 180 wasp start` compiled the Wasp project, set up the database, built the SDK, started Vite on port 3000, started the backend on port 3001, started pg-boss, served requests, and stayed healthy until timeout exit `124`. Wasp still reports the existing schema-change warning suggesting `wasp db migrate-dev`; no schema or migration change was made in this checkpoint.
+- Docker status: sandboxed `docker ps` was denied by Docker socket permissions; escalated `docker ps` hung without output and was interrupted after about 60 seconds. Database connectivity was nevertheless verified through successful Wasp startup and explicit Prisma validation with Wasp's generated local DB env.
+- Visual browser verification was not performed because no callable browser connector was exposed and the `agent-browser` CLI is not installed in this environment.
+- Restricted scope preserved: no diff in `app/schema.prisma`, `app/migrations`, `app/package.json`, `app/src/form-builder/registry`, `app/src/clients`, `app/src/properties`, `app/src/inspections`, `app/src/projects`, or `spikes`.
+- Template detail, version-history UI, validate/publish/create-draft actions, archive/restore/delete UI, builder canvas, runtime forms, reports, and PDF behavior remain deferred.
 
 - Phase 3A-4E version history read model and lifecycle summary completed 2026-06-29.
 

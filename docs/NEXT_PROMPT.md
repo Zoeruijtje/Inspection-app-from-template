@@ -1,4 +1,4 @@
-# Phase 3B-1 — Template List, Template Detail, and Version Workflow UI
+# Phase 3B-1B — Template Detail and Version History UI
 
 Continue in:
 
@@ -14,80 +14,118 @@ Mode: Agent
 Reasoning: highest available
 ```
 
-Implement **Phase 3B-1 only**.
+Implement **Phase 3B-1B only**.
 
-Work on an isolated review branch, verify fully, commit and push automatically. Do not merge into `main`.
+This checkpoint extends the new template-management UI with a read-focused detail screen and metadata editing:
 
----
+- authenticated `/templates/:templateId` route;
+- links from `/templates` rows to the detail page;
+- template metadata display;
+- template metadata editing;
+- lifecycle badge;
+- authoritative version-history query display;
+- current published version, draft version, and latest version number summary;
+- editable/read-only badges from backend DTO fields;
+- responsive version table/list;
+- loading, empty, and error states.
 
-## Objective
+Do **not** implement validate, publish, create-draft-from-version, archive, restore, delete, builder canvas, drag-and-drop, runtime forms, reports, or PDF behavior in this checkpoint. Those lifecycle/version mutations belong to Phase 3B-1C.
 
-Build the first production template-management UI on top of the Phase 3A backend contracts.
-
-The checkpoint must implement:
-
-1. template list;
-2. create-template flow;
-3. template detail view;
-4. version history display;
-5. lifecycle/status badges;
-6. editable/read-only state surfaced from the backend;
-7. validate draft workflow;
-8. publish draft workflow;
-9. create draft from `PUBLISHED` or `SUPERSEDED` version workflow;
-10. archive and restore workflow;
-11. safe delete for draft-only templates;
-12. clear loading, empty, and backend-error states.
-
-Do not implement:
-
-- builder canvas;
-- drag-and-drop;
-- dynamic properties panel;
-- runtime forms;
-- report designer;
-- PDF behavior;
-- template duplication;
-- version deletion;
-- rollback/restoration of a superseded version in place;
-- schema changes;
-- migrations;
-- new production dependencies without explicit approval.
+Work on an isolated review branch, verify everything, commit and push automatically. Do not merge into `main`.
 
 ---
 
-## Required Reading
+## 1. Branch Safety
+
+Run:
+
+```bash
+cd ~/dev/inspection-app
+
+git fetch origin
+git switch main
+git pull --ff-only origin main
+
+git branch --show-current
+git status --short
+git log -8 --oneline
+git diff --check
+```
+
+Required:
+
+```text
+branch: main
+working tree: clean
+```
+
+Confirm Phase 3B-1A is present on `main`:
+
+- `FormTemplatesRoute` exists at `/templates`;
+- Templates nav entry exists;
+- `TemplatesPage.tsx`, `TemplateFormDialog.tsx`, and `templateListUi.ts` exist;
+- `docs/TODO.md` marks only Phase 3B-1A complete under Phase 3B.
+
+Check that the new review branch does not already exist:
+
+```bash
+git show-ref --verify --quiet refs/heads/review/phase-3b-1b
+local_status=$?
+
+git ls-remote --exit-code --heads origin review/phase-3b-1b
+remote_status=$?
+
+printf 'local=%s remote=%s\n' "$local_status" "$remote_status"
+```
+
+If it exists locally or remotely, stop and report it.
+
+Create:
+
+```bash
+git switch -c review/phase-3b-1b
+```
+
+Do not switch back to `main` during implementation.
+
+---
+
+## 2. Required Reading
 
 Read completely before editing:
 
 ```text
 AGENTS.md
+
 docs/PROJECT_BRIEF.md
 docs/PROGRESS_LOG.md
 docs/TODO.md
 docs/NEXT_PROMPT.md
-docs/FORM_BUILDER_DATA_MODEL.md
-docs/FORM_BUILDER_MASTER_SPEC.md
-docs/FORM_PLATFORM_ROADMAP.md
+docs/UI_RULES.md
 docs/PERMISSIONS.md
 docs/SECURITY_CHECKLIST.md
-docs/UI_RULES.md
 
 app/main.wasp.ts
 app/schema.prisma
+
+app/src/form-templates/formTemplates.wasp.ts
 app/src/form-templates/operations.ts
+app/src/form-templates/validation.ts
 app/src/form-templates/versionHistory.ts
 app/src/form-templates/versionHistoryOperations.ts
-app/src/form-templates/versionValidationOperations.ts
-app/src/form-templates/publishOperations.ts
-app/src/form-templates/createDraftOperations.ts
-app/src/form-templates/formTemplates.wasp.ts
-app/src/form-templates/versionHistoryOperations.wasp.ts
-app/src/form-templates/versionValidationOperations.wasp.ts
-app/src/form-templates/publishOperations.wasp.ts
-app/src/form-templates/createDraftOperations.wasp.ts
-app/src/client/components/ui/
+app/src/form-templates/versionHistoryValidation.ts
+app/src/form-templates/TemplatesPage.tsx
+app/src/form-templates/TemplateFormDialog.tsx
+app/src/form-templates/templateListUi.ts
+app/src/form-templates/templateListUi.test.ts
+
 app/src/client/components/NavBar/constants.ts
+app/src/client/components/ui/
+app/src/client/hooks/use-toast.ts
+
+app/src/properties/PropertyDetailPage.tsx
+app/src/clients/ClientDetailPage.tsx
+app/src/inspections/InspectionDetailPage.tsx
 ```
 
 Run:
@@ -97,22 +135,28 @@ cd ~/dev/inspection-app/app
 wasp version
 ```
 
-Use official Wasp 0.24 docs only if Wasp UI/spec behavior is uncertain.
+Use official Wasp documentation matching the installed version only where behavior is uncertain. Do not browse unrelated documentation.
 
 ---
 
-## Scope
+## 3. Scope
 
 Expected changes:
 
 ```text
-app/main.wasp.ts
-app/src/form-templates/
-app/src/client/components/NavBar/constants.ts
+app/src/form-templates/formTemplates.wasp.ts
+app/src/form-templates/TemplatesPage.tsx
+app/src/form-templates/TemplateDetailPage.tsx
+app/src/form-templates/TemplateMetadataDialog.tsx
+app/src/form-templates/templateDetailUi.ts
+app/src/form-templates/templateDetailUi.test.ts
+app/src/form-templates/vitest.config.ts
 docs/PROGRESS_LOG.md
 docs/TODO.md
 docs/NEXT_PROMPT.md
 ```
+
+A slightly different component split is acceptable if it stays maintainable.
 
 Do not modify:
 
@@ -124,35 +168,51 @@ app/src/form-builder/registry/
 app/src/clients/
 app/src/properties/
 app/src/inspections/
+app/src/projects/
 spikes/
 .env
 .env.server
 ```
 
-If a schema or migration change appears necessary, stop and report the blocker.
+Do not add backend operations, modify existing backend DTOs, create migrations, install packages, or add production dependencies. If a backend/schema requirement appears necessary, stop and report it.
 
 ---
 
-## Backend Contracts To Use
+## 4. Route and Navigation
 
-Use existing Wasp client operations from `wasp/client/operations`:
+Add an authenticated route to the existing `formTemplatesSpec`:
 
-- `getFormTemplates`
-- `getFormTemplateById`
-- `getFormTemplateVersionById`
-- `getFormTemplateVersionHistory`
-- `createFormTemplate`
-- `updateFormTemplate`
-- `archiveFormTemplate`
-- `restoreFormTemplate`
-- `deleteDraftOnlyFormTemplate`
-- `validateFormTemplateVersion`
-- `publishFormTemplateVersion`
-- `createDraftFromVersion`
+```text
+Route name: FormTemplateDetailRoute
+Path: /templates/:templateId
+Page: TemplateDetailPage
+Authentication: required
+```
 
-Use `getFormTemplateVersionHistory` as the authoritative lifecycle summary for the detail/version workflow UI. Do not re-derive editability or draft-source eligibility from ad hoc client logic when the backend DTO already exposes:
+Use the installed Wasp 0.24 spec syntax already used in the project.
+
+Update template rows/cards on `/templates` so the template name or row links to:
 
 ```ts
+routes.FormTemplateDetailRoute.build({ params: { templateId: template.id } })
+```
+
+Use the generated route helper shape actually produced by Wasp 0.24 in this project. Do not add `/templates/:templateId/versions/:versionId` in this checkpoint.
+
+---
+
+## 5. Detail Page Data
+
+Load:
+
+```ts
+useQuery(getFormTemplateById, { templateId })
+useQuery(getFormTemplateVersionHistory, { templateId })
+```
+
+Use `getFormTemplateVersionHistory` as the authoritative lifecycle/version state source. Do not re-derive editability or draft-source eligibility when the backend DTO already exposes:
+
+```text
 draftVersionId
 currentPublishedVersionId
 latestVersionNumber
@@ -162,152 +222,95 @@ versions[].isReadOnly
 versions[].canCreateDraftFromThisVersion
 ```
 
-Client-side hiding is not security. Treat backend errors as authoritative.
+Do not query per-version details per row.
 
 ---
 
-## UI Requirements
+## 6. Detail Page UI
 
-### Routes
+Implement:
 
-Add backend-backed template-management routes:
+- back link to `/templates`;
+- header with template name;
+- description when present;
+- category when present;
+- tags;
+- lifecycle badge with visible text `Active` or `Archived`;
+- created and updated dates;
+- summary badges/cards for draft version, current published version, latest version number, and total version count;
+- edit metadata button/dialog;
+- version history section.
 
-```text
-/templates
-/templates/:templateId
-```
-
-Do not add `/templates/:templateId/versions/:versionId` unless it is a simple read-only link target with no builder UI. Prefer keeping Phase 3B-1 focused on list/detail.
-
-### Navigation
-
-Add an authenticated navigation entry for Templates using the app's existing nav conventions and lucide icons.
-
-### Template List
-
-The first screen at `/templates` must be the usable list, not a landing page.
-
-Include:
-
-- search/filter by name, description, category, and tags;
-- active/archived filtering;
-- template lifecycle badges;
-- draft/current-published summary from existing metadata where available;
-- create-template button/dialog;
-- empty state for no templates;
-- empty state for no search results;
-- loading and backend-error states;
-- links to detail pages.
-
-Create-template flow:
+The metadata edit dialog should use existing `updateFormTemplate`:
 
 - fields: name, description, category, tags;
-- client-side trimming should match existing backend semantics where practical;
-- submit through `createFormTemplate`;
-- on success, navigate to `/templates/:templateId` or refresh list and highlight the new template;
-- display backend validation errors clearly.
+- same trimming and comma-separated tag parsing behavior as create;
+- client-side required name error;
+- backend remains authoritative for length and validation;
+- disable submit while pending;
+- keep dialog open on error;
+- close only on success;
+- refetch both detail and list-relevant data where applicable;
+- show success toast.
 
-### Template Detail
+Archived templates may still be readable. If `updateFormTemplate` returns backend conflict for archived templates, show the backend error clearly.
 
-At `/templates/:templateId`, load:
+---
 
-- template metadata/detail;
-- authoritative version history via `getFormTemplateVersionHistory`.
+## 7. Version History UI
 
-Show:
-
-- template name, description, category, tags;
-- lifecycle badge (`ACTIVE` / `ARCHIVED`);
-- draft badge when `draftVersionId` exists;
-- current published badge using `currentPublishedVersionId`;
-- latest version number;
-- archive/restore action based on template lifecycle;
-- safe delete action for draft-only templates;
-- version history table/list.
-
-Version rows must show:
+Display each version with:
 
 - version number;
-- status badge (`DRAFT`, `PUBLISHED`, `SUPERSEDED`);
+- status badge: `Draft`, `Published`, `Superseded`;
 - published timestamp when present;
 - snapshot schema/hash metadata when present;
 - editable/read-only badge from `isEditable` / `isReadOnly`;
-- validate action for editable draft;
-- publish action for editable draft;
-- create-draft-from-this-version action only when `canCreateDraftFromThisVersion` is true.
+- indicator for `canCreateDraftFromThisVersion` only as read-only affordance text or badge, not a button yet.
 
-Do not allow or render generic version update/delete/rollback controls.
+Do not render validate, publish, create draft, rollback, delete, archive, restore, or destructive lifecycle buttons.
 
-### Workflows
+Responsive requirements:
 
-Validate draft:
-
-- call `validateFormTemplateVersion({ versionId })`;
-- show valid/invalid state;
-- show issue list and counts when invalid;
-- do not publish automatically.
-
-Publish draft:
-
-- require confirmation that published versions become read-only;
-- call `publishFormTemplateVersion({ versionId })`;
-- show validation failure issues if backend returns `FORM_TEMPLATE_VERSION_INVALID`;
-- refresh template detail and version history after success.
-
-Create draft from history:
-
-- only expose buttons for versions where `canCreateDraftFromThisVersion === true`;
-- call `createDraftFromVersion({ sourceVersionId })`;
-- refresh detail/history after success;
-- clearly show conflict errors, especially existing draft or source integrity failures.
-
-Archive/restore:
-
-- call `archiveFormTemplate` or `restoreFormTemplate`;
-- archived templates remain readable;
-- archived templates show all versions read-only and draft creation disabled.
-
-Safe delete:
-
-- only provide delete UX for draft-only templates where deletion is plausible;
-- require exact name confirmation;
-- call `deleteDraftOnlyFormTemplate`;
-- handle backend 409 if published/superseded history exists;
-- navigate back to `/templates` after success.
+- desktop can use a compact table;
+- mobile should switch to stacked rows/cards or a horizontally safe layout;
+- no horizontal page overflow at 375 px;
+- long template names, descriptions, tags, and hashes wrap safely;
+- action/status cells must not overlap.
 
 ---
 
-## Design Requirements
+## 8. States and Errors
 
-Follow `docs/UI_RULES.md` and existing app conventions.
+Implement:
 
-- Build a work-focused SaaS UI: dense, scannable, restrained.
-- Use existing shared UI components where available.
-- Use lucide icons in icon buttons and actions.
-- Avoid marketing hero sections.
-- Avoid nested cards and decorative gradient/orb backgrounds.
-- Use stable dimensions for buttons, badges, tables, and action cells so loading/error text does not shift layouts.
-- Ensure mobile layouts do not overlap or clip text.
-- Use clear backend-error surfaces with retry actions.
+- initial loading state for detail/history;
+- backend error state with safe user-facing message and retry action;
+- not found state through backend error handling;
+- empty version-history state, even though current backend should normally reject zero-version histories;
+- metadata update pending/error/success states.
 
----
-
-## Tests
-
-Add focused tests where the repo already supports UI/unit testing. If no established UI test harness exists for these pages, add lightweight pure/helper tests for:
-
-- status/lifecycle badge mapping;
-- action availability from `getFormTemplateVersionHistory` DTO;
-- search/filter behavior;
-- backend error normalization/display helpers.
-
-Do not add placeholder tests.
-
-All existing form-template and registry tests must remain enabled and pass.
+Reuse or extend the safe error helper from Phase 3B-1A. Never display raw objects, stack traces, or `[object Object]`.
 
 ---
 
-## Verification
+## 9. Pure Helper Tests
+
+Add tests without adding dependencies for:
+
+- status badge mapping for `DRAFT`, `PUBLISHED`, `SUPERSEDED`;
+- lifecycle badge mapping;
+- editable/read-only badge mapping;
+- summary derivation from `getFormTemplateVersionHistory` DTO fields;
+- route/detail-safe empty history fallback formatting if helper exists;
+- metadata tag parsing reuse or adapter behavior if changed;
+- safe error handling for detail/history/update errors if helper is extended.
+
+Do not add placeholder tests. Keep existing form-template and registry tests enabled.
+
+---
+
+## 10. Verification
 
 Run:
 
@@ -334,7 +337,7 @@ cd ~/dev/inspection-app/app
 npx prisma validate
 ```
 
-If `DATABASE_URL` is unset, rerun Prisma validation with the verified local Wasp dev DB URL if a Wasp DB container is running. Do not use a fake placeholder URL when the real local development database is available.
+If `DATABASE_URL` is unavailable in the shell, use Wasp's verified local development database env. Do not use a fake placeholder URL if the real local database is running.
 
 Start the app:
 
@@ -343,7 +346,9 @@ cd ~/dev/inspection-app/app
 timeout 180 wasp start
 ```
 
-Success requires Wasp compilation, PostgreSQL connection, backend startup, Vite startup, and the process remaining healthy until timeout exit `124`.
+Success requires Wasp compilation, PostgreSQL connection, backend on port 3001, Vite on port 3000, and the process remaining healthy until timeout exit `124`.
+
+If browser tooling is available, inspect `/templates` and `/templates/:templateId` at approximately 375 px, 768 px, and 1440 px. Verify navigation, detail loading, metadata editing, version history rendering, loading/error/empty states where practical, and no horizontal overflow. Do not create persistent junk data solely for screenshots; clean up test data where safe.
 
 Inspect restricted scope:
 
@@ -358,6 +363,7 @@ git diff -- \
   app/src/clients \
   app/src/properties \
   app/src/inspections \
+  app/src/projects \
   spikes
 ```
 
@@ -365,20 +371,60 @@ The restricted diff must be empty.
 
 ---
 
-## Documentation
+## 11. Documentation
 
-After implementation and verification, update:
+Update:
 
-- `docs/PROGRESS_LOG.md`
-- `docs/TODO.md`
-- `docs/NEXT_PROMPT.md`
+```text
+docs/PROGRESS_LOG.md
+docs/TODO.md
+docs/NEXT_PROMPT.md
+```
 
-Update `docs/DECISIONS.md` only if a genuine architectural decision was made.
+Progress log must record route, row links, metadata display/editing, version history display, tests, Wasp startup, visual verification result, and restricted-scope result.
+
+TODO must mark only Phase 3B-1B complete. Do not mark Phase 3B-1C or full Phase 3B complete.
+
+NEXT_PROMPT should become Phase 3B-1C and cover validate, publish, create-draft-from-version, archive, restore, and safe delete UI only.
 
 ---
 
-## Commit and Push
+## 12. Commit and Push
 
-Commit on the review branch and push to `origin/<branch>`.
+Confirm:
+
+```bash
+cd ~/dev/inspection-app
+git branch --show-current
+```
+
+It must return:
+
+```text
+review/phase-3b-1b
+```
+
+Stage explicit intended files only. Do not use `git add .` or `git add -A`.
+
+Run:
+
+```bash
+git diff --cached --check
+git diff --cached --name-status
+git diff --cached --stat
+git branch --show-current
+```
+
+Commit:
+
+```bash
+git commit -m "feat(3b): add template detail version history UI"
+```
+
+Push:
+
+```bash
+git push -u origin review/phase-3b-1b
+```
 
 Do not push to `main`, merge, amend, rebase, squash, reset, force-push, delete branches, or open/merge a pull request automatically.

@@ -15,5 +15,6 @@ export const demoNavigationitems: NavigationItem[] = [
   { name: "Properties", to: routes.PropertiesRoute.to },
   { name: "Inspections", to: routes.InspectionsRoute.to },
   { name: "Projects", to: routes.ProjectsRoute.to },
+  { name: "Templates", to: routes.FormTemplatesRoute.to },
   { name: "File Upload", to: routes.FileUploadRoute.to },
 ] as const;

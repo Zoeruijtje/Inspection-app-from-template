@@ -1,5 +1,6 @@
-import { action, query, type Spec } from "@wasp.sh/spec";
+import { action, page, query, route, type Spec } from "@wasp.sh/spec";
 
+import { TemplatesPage } from "./TemplatesPage" with { type: "ref" };
 import {
   archiveFormTemplate,
   createFormTemplate,
@@ -17,6 +18,7 @@ const formTemplateEntities = (): ("FormTemplate" | "FormTemplateVersion")[] => [
 ];
 
 export const formTemplatesSpec: Spec = [
+  route("FormTemplatesRoute", "/templates", page(TemplatesPage, { authRequired: true })),
   query(getFormTemplates, { entities: formTemplateEntities() }),
   query(getFormTemplateById, { entities: formTemplateEntities() }),
   query(getFormTemplateVersionById, { entities: formTemplateEntities() }),
