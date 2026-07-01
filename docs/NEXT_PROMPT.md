@@ -1,4 +1,4 @@
-# Phase 3B-1C - Template Lifecycle and Version Workflow Actions
+# Phase 3C-1A - Builder Route and Read-Only Three-Panel Shell
 
 Continue in:
 
@@ -6,34 +6,31 @@ Continue in:
 ~/dev/inspection-app
 ```
 
-Implement **Phase 3B-1C only**.
+Implement **Phase 3C-1A only**.
 
-This phase extends the existing template detail UI with lifecycle and version workflow actions:
+This phase starts the actual builder experience without adding builder mutations. Add an authenticated builder route for the current editable draft, load the authoritative draft definition tree, and render a responsive read-only three-panel shell:
 
-- validate the current draft;
-- publish a valid draft;
-- display validation feedback;
-- create a new draft from a published or superseded version;
-- archive an active template;
-- restore an archived template;
-- safely delete a draft-only template with exact-name confirmation.
+- left panel: controlled registry-backed palette;
+- center panel: read-only canvas structure;
+- right panel: read-only properties/selection panel;
+- mobile: single-panel navigation between Canvas, Palette, and Properties.
 
-Do **not** implement builder canvas, page/container/block editing, drag-and-drop, runtime form filling, reports, PDF rendering, duplicate-template deep copy, or template marketplace behavior.
+Do **not** implement drag-and-drop, click-to-add blocks, page/container/block/option mutations, autosave, undo/redo, runtime form filling, reports, PDF rendering, duplicate-template deep copy, or marketplace behavior.
 
-## Required starting point
+## Required Starting Point
 
-Start from `main` after Phase 3B-1B is merged. Work on a new isolated review branch, for example:
+Start from `main` after Phase 3B-1C is merged. Work on a new isolated review branch, for example:
 
 ```bash
 git fetch origin
 git switch main
 git pull --ff-only origin main
-git switch -c review/phase-3b-1c
+git switch -c review/phase-3c-1a
 ```
 
 Stop and report if the branch already exists locally or remotely.
 
-## Required reading
+## Required Reading
 
 Read before editing:
 
@@ -46,69 +43,136 @@ docs/NEXT_PROMPT.md
 docs/UI_RULES.md
 docs/PERMISSIONS.md
 docs/SECURITY_CHECKLIST.md
+docs/FORM_PLATFORM_ROADMAP.md
+docs/FORM_BUILDER_MASTER_SPEC.md
+docs/FORM_BLOCK_CATALOG.md
 
 app/main.wasp.ts
 app/schema.prisma
 app/src/form-templates/formTemplates.wasp.ts
-app/src/form-templates/versionValidationOperations.ts
-app/src/form-templates/publishOperations.ts
-app/src/form-templates/createDraftOperations.ts
-app/src/form-templates/operations.ts
-app/src/form-templates/versionHistory.ts
+app/src/form-templates/definitionOperations.wasp.ts
+app/src/form-templates/versionHistoryOperations.wasp.ts
 app/src/form-templates/TemplateDetailPage.tsx
-app/src/form-templates/TemplateMetadataDialog.tsx
 app/src/form-templates/templateDetailUi.ts
-app/src/form-templates/templateListUi.ts
+app/src/form-templates/templateWorkflowUi.ts
+app/src/form-templates/definitionOperations.ts
+app/src/form-templates/definitionTree.ts
+app/src/form-templates/definitionValidation.ts
+app/src/form-templates/definitionAuthorization.ts
+app/src/form-templates/versionHistory.ts
+app/src/form-builder/registry/
+app/src/client/App.tsx
 app/src/client/components/ui/
 app/src/client/hooks/use-toast.ts
 ```
 
-Run `cd app && wasp version`. Use official Wasp 0.24 docs only if route/action/query behavior is uncertain.
+Run:
+
+```bash
+cd ~/dev/inspection-app/app
+wasp version
+```
+
+Use official Wasp 0.24 documentation only where route/action/query behavior is genuinely uncertain.
 
 ## Scope
 
-Use existing backend operations and DTOs wherever possible:
+Use existing backend operations and DTOs:
 
-- `validateFormTemplateVersion`
-- `publishFormTemplateVersion`
-- `createDraftFromVersion`
-- `archiveFormTemplate`
-- `restoreFormTemplate`
-- `deleteDraftOnlyFormTemplate`
 - `getFormTemplateById`
 - `getFormTemplateVersionHistory`
+- `getFormTemplateVersionDefinitionTree`
 
 Do not add backend operations or alter backend DTOs unless a concrete blocker is found. If a backend/schema change appears necessary, stop and report the blocker.
 
-Expected UI behavior:
+## Required Behavior
 
-- Action availability must use authoritative backend DTOs and lifecycle/version state, not client-only guesses.
-- Draft validation should show clear issue lists and counts.
-- Publish should be available only for the current editable draft where appropriate and should surface validation/publish failures safely.
-- Create-draft-from-version should be shown as an action only where `canCreateDraftFromThisVersion` is true; it must remain disabled or absent otherwise.
-- Archive, restore, and safe delete should use confirmation dialogs and clear pending/success/error states.
-- Draft-only delete must require exact template name confirmation and should never be offered for published/superseded histories.
-- After any successful mutation, refetch detail and version-history data and keep success separate from refresh failure.
-- Use toasts consistently with existing template UI.
-- Keep responsive layouts usable on mobile and desktop.
+Add a builder route for an editable draft, using the existing Wasp Spec conventions. A suggested route shape is:
 
-## Safety rules
+```text
+/templates/:templateId/builder
+```
 
-- Server-side ownership checks remain the authority; frontend hiding is not security.
-- Do not expose raw snapshots, user IDs, internal relations, stack traces, or `[object Object]`.
-- Do not add destructive buttons without confirmation.
-- Prevent duplicate submissions while actions are pending.
-- Capture primitive input values synchronously in React event handlers; never reference event objects inside functional state updaters.
+The builder page must:
+
+- authenticate through route protection;
+- load template detail and authoritative version history;
+- select the current draft only when `history.lifecycleStatus === "ACTIVE"`, `draftVersionId` is non-null, and the draft version has `status === "DRAFT"`, `isEditable === true`, and `isReadOnly === false`;
+- load `getFormTemplateVersionDefinitionTree({ versionId: draftVersionId })` only after a valid editable draft is known;
+- show safe loading, not-found, archived/no-draft, lifecycle mismatch, integrity error, and retry states;
+- never derive ownership on the client;
+- never expose user IDs, raw snapshots, internal relations, stack traces, or `[object Object]`.
+
+## Shell Layout
+
+Desktop (`>= 1024px`):
+
+- three-panel layout with stable responsive dimensions;
+- left palette panel;
+- center canvas panel;
+- right properties panel;
+- no cards nested inside cards;
+- no page-level horizontal scrolling.
+
+Mobile/tablet:
+
+- single-panel mode with tabs or segmented controls for Canvas, Palette, and Properties;
+- maintain usable touch targets and visible focus states;
+- all text must wrap within its container.
+
+## Palette
+
+Render the controlled registry as read-only palette entries:
+
+- group block types by registry category where available;
+- show label/name, type ID, and concise description;
+- show structural/container entries separately if the registry exposes them;
+- include a search/filter input if it can be done without adding mutation behavior;
+- do not implement click-to-add or drag-to-add.
+
+## Canvas
+
+Render the normalized definition tree read-only:
+
+- pages in backend order;
+- root containers and child containers in backend order;
+- blocks and options in backend order;
+- empty draft state when no pages/containers/blocks exist;
+- clear placeholders for empty pages or containers;
+- selection state for page/container/block rows is allowed, but selection must not mutate data;
+- do not implement inline editing, add/delete/move controls, drag handles, autosave, dirty state, or undo/redo.
+
+## Properties Panel
+
+Render read-only details for the selected item:
+
+- selected page: title, sort order, ID;
+- selected container: type, title, config, sort order, ID;
+- selected block: block type, label, required flag, stable key, config, validation/visibility metadata, options summary;
+- no editable controls yet;
+- wrap JSON/config values safely in contained monospace blocks.
+
+## Navigation From Detail
+
+Add an obvious builder/open-draft action from the template detail page only when the authoritative current draft is editable and lifecycle state is consistent.
+
+Do not show the builder action for:
+
+- archived templates;
+- templates with no current draft;
+- inconsistent lifecycle state;
+- draft versions with contradictory editability flags.
 
 ## Tests
 
-Add focused pure-helper tests for any new UI state helpers:
+Add focused pure-helper tests for any new builder UI helpers:
 
-- action availability labels;
-- validation issue formatting;
-- confirmation-name matching helpers, if client-side helper is added;
-- safe action result/error display helpers;
-- summary refresh behavior helpers, if extracted.
+- current editable draft selection;
+- lifecycle mismatch handling;
+- empty/no-draft/archived states;
+- registry grouping/filtering helpers;
+- tree summary/selection helpers;
+- safe JSON/config display helpers, if extracted.
 
 Keep all existing form-template and registry tests enabled.
 
@@ -117,7 +181,7 @@ Keep all existing form-template and registry tests enabled.
 Run:
 
 ```bash
-cd app
+cd ~/dev/inspection-app/app
 npx --no-install vitest run --config src/form-templates/vitest.config.ts --reporter=verbose
 npx --no-install vitest run --config src/form-builder/registry/vitest.config.ts --reporter=verbose
 ```
@@ -125,25 +189,31 @@ npx --no-install vitest run --config src/form-builder/registry/vitest.config.ts 
 Then:
 
 ```bash
-cd ..
+cd ~/dev/inspection-app
 git diff --check
 make check
 ```
 
-Validate Prisma with the real local Wasp dev DB URL if `DATABASE_URL` is not exported.
-
-Start the app:
+Run available project scripts:
 
 ```bash
-cd app
+cd ~/dev/inspection-app/app
+npm run lint --if-present
+npm run test --if-present
+npm run build --if-present
+```
+
+Validate Prisma using the actual local Wasp development environment. Start the app with:
+
+```bash
 timeout 180 wasp start
 ```
 
 Success requires Wasp compilation, database connection, SDK build, backend on port 3001, Vite on port 3000, and healthy runtime until timeout exit `124`.
 
-If browser tooling is available, verify `/templates` and `/templates/:templateId` at approximately 375 px, 768 px, and 1440 px. Confirm action visibility, dialogs, pending states, validation feedback, success/error toasts, refetch behavior, and no horizontal overflow.
+If browser tooling is available, verify `/templates`, `/templates/:templateId`, and the new builder route at approximately 375 px, 768 px, and 1440 px. Confirm no horizontal overflow, no console errors, and no mutation controls are present.
 
-## Restricted files
+## Restricted Files
 
 Do not modify:
 
@@ -152,7 +222,6 @@ app/schema.prisma
 app/migrations/
 app/package.json
 app/package-lock.json
-app/src/form-builder/registry/
 app/src/clients/
 app/src/properties/
 app/src/inspections/
@@ -176,14 +245,14 @@ docs/NEXT_PROMPT.md
 
 Update `docs/DECISIONS.md` only if a real product or architecture decision is made.
 
-## Commit and push
+## Commit and Push
 
 Stage explicit intended files only. Do not use `git add .` or `git add -A`.
 
 Commit:
 
 ```bash
-git commit -m "feat(3b): add template lifecycle workflow UI"
+git commit -m "feat(3c): add read-only builder shell"
 ```
 
 Push the review branch. Do not merge into `main`.

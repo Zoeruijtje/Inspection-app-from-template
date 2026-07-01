@@ -30,6 +30,7 @@ export default defineConfig({
       "src/form-templates/versionHistoryOperations.test.ts",
       "src/form-templates/templateListUi.test.ts",
       "src/form-templates/templateDetailUi.test.ts",
+      "src/form-templates/templateWorkflowUi.test.ts",
       "src/form-templates/canonicalSnapshot.test.ts",
       "src/form-templates/versionValidation.test.ts",
       "src/form-templates/versionValidationOperations.test.ts",

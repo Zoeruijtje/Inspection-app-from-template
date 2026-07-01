@@ -24,16 +24,36 @@
 - Phase 3A-4E authoritative authenticated version-history read model, lifecycle affordance derivation, and integrity-state detection are implemented.
 - Phase 3B-1A authenticated template list and create-template UI is implemented.
 - Phase 3B-1B authenticated template detail, metadata editing, and read-only version history UI is implemented.
+- Phase 3B-1C authenticated template lifecycle and version workflow UI is implemented.
 
 ## Next milestone
 
-Phase 3B-1C — Template Lifecycle and Version Workflow Actions. Add UI for draft validation, publishing valid drafts, validation feedback, create-draft-from-version, archive, restore, and draft-only safe delete. Do not add builder canvas, page/container/block editing, drag-and-drop, runtime forms, reports, or PDF behavior.
+Phase 3C-1A — Builder Route and Read-Only Three-Panel Shell. Add an authenticated builder route for the current editable draft, load the normalized definition tree, and render a read-only palette/canvas/properties shell. Do not add builder mutations, drag-and-drop, autosave, undo/redo, runtime forms, reports, or PDF behavior.
 
 ## In progress
 
 - None.
 
 ## Completed
+
+- Phase 3B-1C template lifecycle and version workflow actions UI completed 2026-07-01.
+
+- Added the template detail workflow section using only existing generated client operations: `validateFormTemplateVersion`, `publishFormTemplateVersion`, `createDraftFromVersion`, `archiveFormTemplate`, `restoreFormTemplate`, `deleteDraftOnlyFormTemplate`, `getFormTemplateById`, and `getFormTemplateVersionHistory`.
+- Validation is user-triggered for the authoritative current editable draft only. Results render in a structured page panel with valid/invalid status, full backend issue list in backend order, counts for pages/containers/blocks/options, safe code/path wrapping, and optional snapshot hash display. Empty draft validation issues such as missing pages/blocks are displayed as data, not “fixed” by builder changes.
+- Publish remains disabled until the current page session has a successful validation result for the current draft version. Publishing uses a confirmation dialog, separates mutation success from post-success refresh failure, clears stale validation after success, shows prior-publication superseding feedback when returned, and extracts structured validation issues from publish failures without stringifying unknown objects.
+- Added per-version Create draft actions only for versions where `canCreateDraftFromThisVersion` is true and top-level history state is consistent (`ACTIVE`, no current draft, `canCreateDraft === true`). The confirmation dialog identifies the source version/status and success toasts include cloned row counts.
+- Added archive and restore confirmations. Successful archive/restore clears validation, refetches detail/history, and disables workflow and metadata editing if the mutation succeeds but the page cannot refresh.
+- Added a visually separate draft-only danger zone. Delete is shown only for non-empty all-draft histories, requires exact case-sensitive and whitespace-sensitive template-name confirmation, submits the entered value unchanged, and navigates to `/templates` after success without refetching the deleted detail page.
+- Implemented one global `PendingWorkflowAction` state for validate/publish/create-draft/archive/restore/delete to block conflicting duplicate submissions and show action-specific pending labels.
+- Added lifecycle mismatch handling: if template metadata lifecycle and version-history lifecycle disagree, workflow mutations are disabled, a refresh warning is shown, and no client-side ownership/lifecycle guesses are made.
+- Added pure `templateWorkflowUi.ts` helpers and `templateWorkflowUi.test.ts` coverage for validate/publish/create-draft/archive/restore/delete availability, exact-name matching, structured validation extraction, count validation, pending labels, and stale-validation invalidation.
+- React event safety audited for new workflow inputs: delete confirmation captures `event.currentTarget.value` synchronously before updating state; no new code references a React event object inside a functional state updater.
+- Verification: form-template Vitest passed (`34` files, `556` tests); registry Vitest passed (`1` file, `38` tests); `git diff --check` passed; `make check` passed; explicit `npx prisma validate` first failed because `DATABASE_URL` was unset, then passed with the real generated Wasp dev DB URL `postgresql://postgresWaspDevUser:postgresWaspDevPass@localhost:5432/InspectionApp-349b0351ab`; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no configured script output.
+- Wasp startup: escalated `timeout 180 wasp start` first failed during SDK build because `isConflictError` was missing in `TemplateDetailPage.tsx`; adding the local helper fixed it. The rerun compiled the Wasp project, set up the database, built the SDK, started Vite on port 3000, started the backend on port 3001, started pg-boss, served `/templates`, `/templates/:templateId`, version-history, and validation operation requests with 200 responses, and stayed healthy until timeout exit `124`. Wasp still reports the existing schema-change warning suggesting `wasp db migrate-dev`; no schema or migration change was made in this checkpoint.
+- Database status: Docker responded within the hard timeout. The existing project container `wasp-dev-db-InspectionApp-349b0351ab` (`postgres:18`) was stopped; it was started without reset or volume deletion and is running on port 5432.
+- Browser visual verification was not performed because tool discovery exposed GitHub and multi-agent tools only, not a browser automation connector. Wasp runtime logs show authenticated template list/detail/history/validation operation requests were served successfully, but responsive visual checks at 375/768/1440 remain manual.
+- Restricted scope preserved: no backend operation, schema, migration, Wasp spec, registry, client/property/inspection/project, package, lockfile, spike, or environment-file changes were made.
+- Builder canvas, page/container/block/option editing, drag-and-drop, autosave, undo/redo, runtime forms, reports, PDF behavior, duplicate-template deep copy, and marketplace behavior remain unimplemented.
 
 - Phase 3B-1B template detail and version history UI completed 2026-06-30.
 

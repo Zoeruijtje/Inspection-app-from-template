@@ -1,10 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { useParams } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import {
+  archiveFormTemplate,
+  createDraftFromVersion,
+  deleteDraftOnlyFormTemplate,
   getFormTemplateById,
   getFormTemplateVersionHistory,
+  publishFormTemplateVersion,
+  restoreFormTemplate,
   useQuery,
+  validateFormTemplateVersion,
 } from "wasp/client/operations";
 import { Link as WaspRouterLink, routes } from "wasp/client/router";
 import {
@@ -16,6 +22,7 @@ import {
   Layers3,
   Loader2,
   Pencil,
+  PlusCircle,
   RotateCcw,
   ShieldAlert,
   Tag,
@@ -43,6 +50,23 @@ import {
   type TemplateVersionStatus,
 } from "./templateDetailUi";
 import { getSafeErrorMessage } from "./templateListUi";
+import { TemplateWorkflowActions } from "./TemplateWorkflowActions";
+import {
+  TemplateWorkflowDialogs,
+  type WorkflowDialogState,
+} from "./TemplateWorkflowDialogs";
+import {
+  canCreateDraftFromVersion,
+  canDeleteDraftOnlyTemplate,
+  canPublishDraft,
+  extractWorkflowValidationDetails,
+  findCurrentEditableDraft,
+  getFreshValidationResult,
+  hasLifecycleMismatch,
+  shouldClearValidationAfterAction,
+  type PendingWorkflowAction,
+  type WorkflowValidationResult,
+} from "./templateWorkflowUi";
 
 type FormTemplateDetail = {
   id: string;
@@ -98,12 +122,29 @@ export function TemplateDetailPage() {
 }
 
 function TemplateDetailData({ templateId }: { templateId: string }) {
+  const navigate = useNavigate();
   const templateQuery = useQuery(getFormTemplateById, { templateId });
   const historyQuery = useQuery(getFormTemplateVersionHistory, { templateId });
   const [isMetadataDialogOpen, setIsMetadataDialogOpen] = useState(false);
+  const [pendingAction, setPendingAction] =
+    useState<PendingWorkflowAction>(null);
+  const [validationResult, setValidationResult] =
+    useState<WorkflowValidationResult | null>(null);
+  const [refreshWarning, setRefreshWarning] = useState<string | null>(null);
+  const [dialogState, setDialogState] =
+    useState<WorkflowDialogState | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
+  const [deleteConfirmationName, setDeleteConfirmationName] = useState("");
 
   const template = templateQuery.data as FormTemplateDetail | undefined;
   const history = historyQuery.data as FormTemplateVersionHistory | undefined;
+  const lifecycleMismatch =
+    template && history
+      ? hasLifecycleMismatch({
+          templateLifecycleStatus: template.lifecycleStatus,
+          historyLifecycleStatus: history.lifecycleStatus,
+        })
+      : false;
 
   const retryBothQueries = async () => {
     const [templateResult, historyResult] = await Promise.allSettled([
@@ -117,6 +158,8 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
     ) {
       throw new Error("The template page could not refresh.");
     }
+
+    setRefreshWarning(null);
   };
 
   const handleRetry = async () => {
@@ -131,6 +174,391 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
         ),
         variant: "destructive",
       });
+    }
+  };
+
+  useEffect(() => {
+    setValidationResult((current) => {
+      if (!history || !template) {
+        return null;
+      }
+
+      return getFreshValidationResult({
+        history,
+        lifecycleMismatch,
+        validationResult: current,
+      });
+    });
+  }, [history, lifecycleMismatch, template, templateId]);
+
+  useEffect(() => {
+    if (!history || !template || pendingAction !== null || !dialogState) {
+      return;
+    }
+
+    const refreshBlocked = refreshWarning !== null;
+    const dialogSourceVersion =
+      dialogState.type === "createDraft"
+        ? history.versions.find(
+            (version) => version.id === dialogState.sourceVersionId,
+          )
+        : null;
+
+    if (
+      dialogState.type === "publish" &&
+      !canPublishDraft({
+        history,
+        validationResult,
+        lifecycleMismatch,
+        refreshBlocked,
+        pendingAction,
+      })
+    ) {
+      closeWorkflowDialog();
+    }
+
+    if (
+      dialogState.type === "createDraft" &&
+      (!dialogSourceVersion ||
+        !canCreateDraftFromVersion({
+          history,
+          version: dialogSourceVersion,
+          lifecycleMismatch,
+          refreshBlocked,
+          pendingAction,
+        }))
+    ) {
+      closeWorkflowDialog();
+    }
+
+    if (
+      dialogState.type === "delete" &&
+      !canDeleteDraftOnlyTemplate({
+        history,
+        lifecycleMismatch,
+        refreshBlocked,
+        pendingAction,
+      })
+    ) {
+      closeWorkflowDialog();
+    }
+  }, [
+    dialogState,
+    history,
+    lifecycleMismatch,
+    pendingAction,
+    refreshWarning,
+    template,
+    validationResult,
+  ]);
+
+  const closeWorkflowDialog = () => {
+    setDialogState(null);
+    setDialogError(null);
+    setDeleteConfirmationName("");
+  };
+
+  const clearValidationForAction = (
+    actionType: Exclude<PendingWorkflowAction, null>["type"],
+  ) => {
+    if (shouldClearValidationAfterAction(actionType)) {
+      setValidationResult(null);
+    }
+  };
+
+  const refreshAfterSuccessfulMutation = async (warningMessage: string) => {
+    try {
+      await retryBothQueries();
+    } catch (error) {
+      const message = getSafeErrorMessage(error, warningMessage);
+      setRefreshWarning(message);
+      toast({
+        title: "Refresh needed",
+        description: message,
+      });
+    }
+  };
+
+  const refreshAfterWorkflowFailure = async () => {
+    try {
+      await retryBothQueries();
+    } catch {
+      // The mutation failure is the useful user-facing error.
+    }
+  };
+
+  const handleValidateDraft = async () => {
+    if (!history || pendingAction !== null || refreshWarning) {
+      return;
+    }
+
+    const draft = findCurrentEditableDraft(history);
+    if (!draft) {
+      return;
+    }
+
+    setPendingAction({ type: "validate", versionId: draft.id });
+    setDialogError(null);
+
+    try {
+      const result = (await validateFormTemplateVersion({
+        versionId: draft.id,
+      })) as WorkflowValidationResult;
+      setValidationResult({
+        versionId: result.versionId,
+        valid: result.valid,
+        issues: result.issues,
+        counts: result.counts,
+        snapshotSchemaVersion: result.snapshotSchemaVersion,
+        snapshotHash: result.snapshotHash,
+      });
+      toast({
+        title: result.valid ? "Draft validated" : "Validation failed",
+        description: result.valid
+          ? "The draft is ready to publish."
+          : "Review the validation issues on the page.",
+        variant: result.valid ? undefined : "destructive",
+      });
+    } catch (error) {
+      const message = getSafeErrorMessage(error, "Unable to validate draft.");
+      toast({
+        title: "Validation failed",
+        description: message,
+        variant: "destructive",
+      });
+
+      if (isConflictError(error)) {
+        await refreshAfterWorkflowFailure();
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleOpenPublishDialog = () => {
+    if (!history) {
+      return;
+    }
+
+    const draft = findCurrentEditableDraft(history);
+    if (!draft) {
+      return;
+    }
+
+    setDialogError(null);
+    setDialogState({
+      type: "publish",
+      draftVersionNumber: draft.versionNumber,
+    });
+  };
+
+  const handleOpenCreateDraftDialog = (
+    sourceVersion: FormTemplateVersionHistoryItem,
+  ) => {
+    setDialogError(null);
+    setDialogState({
+      type: "createDraft",
+      sourceVersionId: sourceVersion.id,
+      sourceVersionNumber: sourceVersion.versionNumber,
+      sourceStatus: sourceVersion.status,
+    });
+  };
+
+  const handleConfirmPublish = async () => {
+    if (!history || !template || dialogState?.type !== "publish") {
+      return;
+    }
+
+    const draft = findCurrentEditableDraft(history);
+    if (!draft || pendingAction !== null) {
+      return;
+    }
+
+    setPendingAction({ type: "publish", versionId: draft.id });
+    setDialogError(null);
+
+    try {
+      const result = await publishFormTemplateVersion({ versionId: draft.id });
+      clearValidationForAction("publish");
+      closeWorkflowDialog();
+      toast({
+        title: `Version ${result.versionNumber} published`,
+        description: result.previousPublishedVersionSuperseded
+          ? "The previous published version was superseded."
+          : undefined,
+      });
+      await refreshAfterSuccessfulMutation(
+        "Version published, but the page could not refresh. Reload the page.",
+      );
+    } catch (error) {
+      const structuredValidation = extractWorkflowValidationDetails(error);
+      if (structuredValidation) {
+        setValidationResult({
+          versionId: draft.id,
+          valid: false,
+          issues: structuredValidation.issues,
+          counts: structuredValidation.counts,
+          snapshotSchemaVersion: 1,
+          snapshotHash: null,
+        });
+      } else {
+        setValidationResult(null);
+      }
+
+      const message = getSafeErrorMessage(error, "Unable to publish draft.");
+      setDialogError(message);
+      toast({
+        title: "Draft not published",
+        description: message,
+        variant: "destructive",
+      });
+
+      if (isConflictError(error)) {
+        await refreshAfterWorkflowFailure();
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleConfirmCreateDraft = async () => {
+    if (!template || dialogState?.type !== "createDraft" || pendingAction) {
+      return;
+    }
+
+    setPendingAction({
+      type: "createDraft",
+      sourceVersionId: dialogState.sourceVersionId,
+    });
+    setDialogError(null);
+
+    try {
+      const result = await createDraftFromVersion({
+        sourceVersionId: dialogState.sourceVersionId,
+      });
+      clearValidationForAction("createDraft");
+      closeWorkflowDialog();
+      toast({
+        title: `Draft v${result.versionNumber} created`,
+        description: `Cloned ${result.counts.pages} pages, ${result.counts.containers} containers, ${result.counts.blocks} blocks, and ${result.counts.options} options.`,
+      });
+      await refreshAfterSuccessfulMutation(
+        "Draft created, but the page could not refresh. Reload the page.",
+      );
+    } catch (error) {
+      const message = getSafeErrorMessage(error, "Unable to create draft.");
+      setDialogError(message);
+      toast({
+        title: "Draft not created",
+        description: message,
+        variant: "destructive",
+      });
+
+      if (isConflictError(error)) {
+        await refreshAfterWorkflowFailure();
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleConfirmArchive = async () => {
+    if (!template || dialogState?.type !== "archive" || pendingAction) {
+      return;
+    }
+
+    setPendingAction({ type: "archive" });
+    setDialogError(null);
+
+    try {
+      await archiveFormTemplate({ templateId: template.id });
+      clearValidationForAction("archive");
+      closeWorkflowDialog();
+      toast({ title: "Template archived" });
+      await refreshAfterSuccessfulMutation(
+        "Template archived, but the page could not refresh. Reload the page.",
+      );
+    } catch (error) {
+      const message = getSafeErrorMessage(error, "Unable to archive template.");
+      setDialogError(message);
+      toast({
+        title: "Template not archived",
+        description: message,
+        variant: "destructive",
+      });
+
+      if (isConflictError(error)) {
+        await refreshAfterWorkflowFailure();
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleConfirmRestore = async () => {
+    if (!template || dialogState?.type !== "restore" || pendingAction) {
+      return;
+    }
+
+    setPendingAction({ type: "restore" });
+    setDialogError(null);
+
+    try {
+      await restoreFormTemplate({ templateId: template.id });
+      clearValidationForAction("restore");
+      closeWorkflowDialog();
+      toast({ title: "Template restored" });
+      await refreshAfterSuccessfulMutation(
+        "Template restored, but the page could not refresh. Reload the page.",
+      );
+    } catch (error) {
+      const message = getSafeErrorMessage(error, "Unable to restore template.");
+      setDialogError(message);
+      toast({
+        title: "Template not restored",
+        description: message,
+        variant: "destructive",
+      });
+
+      if (isConflictError(error)) {
+        await refreshAfterWorkflowFailure();
+      }
+    } finally {
+      setPendingAction(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!template || dialogState?.type !== "delete" || pendingAction) {
+      return;
+    }
+
+    setPendingAction({ type: "delete" });
+    setDialogError(null);
+
+    try {
+      await deleteDraftOnlyFormTemplate({
+        templateId: template.id,
+        confirmationName: deleteConfirmationName,
+      });
+      clearValidationForAction("delete");
+      closeWorkflowDialog();
+      toast({ title: "Template deleted" });
+      navigate(routes.FormTemplatesRoute.to);
+    } catch (error) {
+      const message = getSafeErrorMessage(error, "Unable to delete template.");
+      setDialogError(message);
+      toast({
+        title: "Template not deleted",
+        description: message,
+        variant: "destructive",
+      });
+
+      if (isConflictError(error)) {
+        await refreshAfterWorkflowFailure();
+      }
+    } finally {
+      setPendingAction(null);
     }
   };
 
@@ -175,7 +603,28 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
         <TemplateDetailContent
           template={template}
           history={history}
+          pendingAction={pendingAction}
+          validationResult={validationResult}
+          lifecycleMismatch={lifecycleMismatch}
+          refreshWarning={refreshWarning}
           onEditMetadata={() => setIsMetadataDialogOpen(true)}
+          onRefresh={() => void handleRetry()}
+          onValidateDraft={() => void handleValidateDraft()}
+          onOpenPublishDialog={handleOpenPublishDialog}
+          onOpenCreateDraftDialog={handleOpenCreateDraftDialog}
+          onOpenArchiveDialog={() => {
+            setDialogError(null);
+            setDialogState({ type: "archive" });
+          }}
+          onOpenRestoreDialog={() => {
+            setDialogError(null);
+            setDialogState({ type: "restore" });
+          }}
+          onOpenDeleteDialog={() => {
+            setDialogError(null);
+            setDeleteConfirmationName("");
+            setDialogState({ type: "delete" });
+          }}
         />
       </TemplateDetailShell>
 
@@ -186,9 +635,32 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
           onOpenChange={setIsMetadataDialogOpen}
           onUpdated={retryBothQueries}
           onUpdateFailed={retryBothQueries}
-          isReadOnly={history.lifecycleStatus !== "ACTIVE"}
+          isReadOnly={
+            history.lifecycleStatus !== "ACTIVE" ||
+            lifecycleMismatch ||
+            refreshWarning !== null
+          }
         />
       )}
+
+      <TemplateWorkflowDialogs
+        dialogState={dialogState}
+        templateName={template.name}
+        pendingAction={pendingAction}
+        dialogError={dialogError}
+        deleteConfirmationName={deleteConfirmationName}
+        onDeleteConfirmationNameChange={setDeleteConfirmationName}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            closeWorkflowDialog();
+          }
+        }}
+        onConfirmPublish={() => void handleConfirmPublish()}
+        onConfirmCreateDraft={() => void handleConfirmCreateDraft()}
+        onConfirmArchive={() => void handleConfirmArchive()}
+        onConfirmRestore={() => void handleConfirmRestore()}
+        onConfirmDelete={() => void handleConfirmDelete()}
+      />
     </>
   );
 }
@@ -206,15 +678,39 @@ function TemplateDetailShell({ children }: { children: ReactNode }) {
 function TemplateDetailContent({
   template,
   history,
+  pendingAction,
+  validationResult,
+  lifecycleMismatch,
+  refreshWarning,
   onEditMetadata,
+  onRefresh,
+  onValidateDraft,
+  onOpenPublishDialog,
+  onOpenCreateDraftDialog,
+  onOpenArchiveDialog,
+  onOpenRestoreDialog,
+  onOpenDeleteDialog,
 }: {
   template: FormTemplateDetail;
   history: FormTemplateVersionHistory;
+  pendingAction: PendingWorkflowAction;
+  validationResult: WorkflowValidationResult | null;
+  lifecycleMismatch: boolean;
+  refreshWarning: string | null;
   onEditMetadata: () => void;
+  onRefresh: () => void;
+  onValidateDraft: () => void;
+  onOpenPublishDialog: () => void;
+  onOpenCreateDraftDialog: (version: FormTemplateVersionHistoryItem) => void;
+  onOpenArchiveDialog: () => void;
+  onOpenRestoreDialog: () => void;
+  onOpenDeleteDialog: () => void;
 }) {
   const lifecycleLabel = getLifecycleLabel(history.lifecycleStatus);
   const summary = useMemo(() => buildVersionSummary(history), [history]);
   const isArchived = history.lifecycleStatus === "ARCHIVED";
+  const metadataEditingEnabled =
+    !isArchived && !lifecycleMismatch && refreshWarning === null;
 
   return (
     <>
@@ -240,7 +736,7 @@ function TemplateDetailContent({
             </p>
           </div>
 
-          {!isArchived && (
+          {metadataEditingEnabled && (
             <Button
               type="button"
               variant="outline"
@@ -303,18 +799,29 @@ function TemplateDetailContent({
         <SummaryItem label="Versions" value={summary.total} />
       </section>
 
-      {history.canCreateDraft && (
-        <Alert>
-          <History className="size-4" />
-          <AlertTitle>Draft can be created later</AlertTitle>
-          <AlertDescription>
-            A published or superseded version is eligible as a draft source.
-            Version workflow actions are planned for the next phase.
-          </AlertDescription>
-        </Alert>
-      )}
+      <TemplateWorkflowActions
+        history={history}
+        templateName={template.name}
+        validationResult={validationResult}
+        pendingAction={pendingAction}
+        lifecycleMismatch={lifecycleMismatch}
+        refreshWarning={refreshWarning}
+        onRefresh={onRefresh}
+        onValidateDraft={onValidateDraft}
+        onOpenPublishDialog={onOpenPublishDialog}
+        onOpenArchiveDialog={onOpenArchiveDialog}
+        onOpenRestoreDialog={onOpenRestoreDialog}
+        onOpenDeleteDialog={onOpenDeleteDialog}
+      />
 
-      <VersionHistorySection versions={history.versions} />
+      <VersionHistorySection
+        history={history}
+        versions={history.versions}
+        lifecycleMismatch={lifecycleMismatch}
+        refreshBlocked={refreshWarning !== null}
+        pendingAction={pendingAction}
+        onOpenCreateDraftDialog={onOpenCreateDraftDialog}
+      />
     </>
   );
 }
@@ -379,9 +886,19 @@ function SummaryItem({ label, value }: { label: string; value: string }) {
 }
 
 function VersionHistorySection({
+  history,
   versions,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+  onOpenCreateDraftDialog,
 }: {
+  history: FormTemplateVersionHistory;
   versions: FormTemplateVersionHistoryItem[];
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+  onOpenCreateDraftDialog: (version: FormTemplateVersionHistoryItem) => void;
 }) {
   return (
     <section className="border-border bg-card overflow-hidden rounded-sm border shadow-sm">
@@ -413,11 +930,20 @@ function VersionHistorySection({
                     <th className="w-32 px-4 py-3 font-medium">Access</th>
                     <th className="px-4 py-3 font-medium">Dates</th>
                     <th className="px-4 py-3 font-medium">Snapshot</th>
+                    <th className="w-40 px-4 py-3 font-medium">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-border divide-y">
                   {versions.map((version) => (
-                    <VersionTableRow key={version.id} version={version} />
+                    <VersionTableRow
+                      key={version.id}
+                      history={history}
+                      version={version}
+                      lifecycleMismatch={lifecycleMismatch}
+                      refreshBlocked={refreshBlocked}
+                      pendingAction={pendingAction}
+                      onOpenCreateDraftDialog={onOpenCreateDraftDialog}
+                    />
                   ))}
                 </tbody>
               </table>
@@ -425,7 +951,15 @@ function VersionHistorySection({
 
             <div className="space-y-3 md:hidden">
               {versions.map((version) => (
-                <VersionMobileCard key={version.id} version={version} />
+                <VersionMobileCard
+                  key={version.id}
+                  history={history}
+                  version={version}
+                  lifecycleMismatch={lifecycleMismatch}
+                  refreshBlocked={refreshBlocked}
+                  pendingAction={pendingAction}
+                  onOpenCreateDraftDialog={onOpenCreateDraftDialog}
+                />
               ))}
             </div>
           </>
@@ -436,9 +970,19 @@ function VersionHistorySection({
 }
 
 function VersionTableRow({
+  history,
   version,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+  onOpenCreateDraftDialog,
 }: {
+  history: FormTemplateVersionHistory;
   version: FormTemplateVersionHistoryItem;
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+  onOpenCreateDraftDialog: (version: FormTemplateVersionHistoryItem) => void;
 }) {
   return (
     <tr className="align-top">
@@ -458,14 +1002,34 @@ function VersionTableRow({
       <td className="px-4 py-4">
         <SnapshotMetadata version={version} />
       </td>
+      <td className="px-4 py-4">
+        <VersionCreateDraftAction
+          history={history}
+          version={version}
+          lifecycleMismatch={lifecycleMismatch}
+          refreshBlocked={refreshBlocked}
+          pendingAction={pendingAction}
+          onOpenCreateDraftDialog={onOpenCreateDraftDialog}
+        />
+      </td>
     </tr>
   );
 }
 
 function VersionMobileCard({
+  history,
   version,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+  onOpenCreateDraftDialog,
 }: {
+  history: FormTemplateVersionHistory;
   version: FormTemplateVersionHistoryItem;
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+  onOpenCreateDraftDialog: (version: FormTemplateVersionHistoryItem) => void;
 }) {
   return (
     <article className="border-border rounded-sm border p-4">
@@ -487,7 +1051,58 @@ function VersionMobileCard({
       <div className="mt-4">
         <SnapshotMetadata version={version} />
       </div>
+      <div className="mt-4">
+        <VersionCreateDraftAction
+          history={history}
+          version={version}
+          lifecycleMismatch={lifecycleMismatch}
+          refreshBlocked={refreshBlocked}
+          pendingAction={pendingAction}
+          onOpenCreateDraftDialog={onOpenCreateDraftDialog}
+        />
+      </div>
     </article>
+  );
+}
+
+function VersionCreateDraftAction({
+  history,
+  version,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+  onOpenCreateDraftDialog,
+}: {
+  history: FormTemplateVersionHistory;
+  version: FormTemplateVersionHistoryItem;
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+  onOpenCreateDraftDialog: (version: FormTemplateVersionHistoryItem) => void;
+}) {
+  const canCreate = canCreateDraftFromVersion({
+    history,
+    version,
+    lifecycleMismatch,
+    refreshBlocked,
+    pendingAction,
+  });
+
+  if (!canCreate) {
+    return <span className="text-muted-foreground text-sm">No action</span>;
+  }
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={() => onOpenCreateDraftDialog(version)}
+      className="w-full"
+    >
+      <PlusCircle />
+      Create draft
+    </Button>
   );
 }
 
@@ -697,6 +1312,10 @@ function getVersionStatusClassName(status: TemplateVersionStatus): string {
 
 function isNotFoundError(error: unknown): boolean {
   return getErrorStatusCode(error) === 404;
+}
+
+function isConflictError(error: unknown): boolean {
+  return getErrorStatusCode(error) === 409;
 }
 
 function getErrorStatusCode(error: unknown): number | null {
