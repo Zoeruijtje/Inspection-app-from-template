@@ -142,6 +142,37 @@ export function canPublishDraft({
   );
 }
 
+export function canConfirmPublishDraft({
+  history,
+  validationResult,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+}: {
+  history: WorkflowHistory;
+  validationResult: WorkflowValidationResult | null;
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+}): boolean {
+  const draft = findCurrentEditableDraft(history);
+
+  return (
+    draft !== null &&
+    history.draftVersionId === draft.id &&
+    draft.status === "DRAFT" &&
+    draft.isEditable === true &&
+    draft.isReadOnly === false &&
+    canPublishDraft({
+      history,
+      validationResult,
+      lifecycleMismatch,
+      refreshBlocked,
+      pendingAction,
+    })
+  );
+}
+
 export function canCreateDraftFromVersion({
   history,
   version,
@@ -166,6 +197,28 @@ export function canCreateDraftFromVersion({
   );
 }
 
+export function canConfirmCreateDraftFromVersion({
+  history,
+  version,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+}: {
+  history: WorkflowHistory;
+  version: WorkflowHistoryVersion;
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+}): boolean {
+  return canCreateDraftFromVersion({
+    history,
+    version,
+    lifecycleMismatch,
+    refreshBlocked,
+    pendingAction,
+  });
+}
+
 export function canArchiveTemplate({
   history,
   lifecycleMismatch,
@@ -183,6 +236,25 @@ export function canArchiveTemplate({
     pendingAction === null &&
     history.lifecycleStatus === "ACTIVE"
   );
+}
+
+export function canConfirmArchiveTemplate({
+  history,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+}: {
+  history: WorkflowHistory;
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+}): boolean {
+  return canArchiveTemplate({
+    history,
+    lifecycleMismatch,
+    refreshBlocked,
+    pendingAction,
+  });
 }
 
 export function canRestoreTemplate({
@@ -204,6 +276,25 @@ export function canRestoreTemplate({
   );
 }
 
+export function canConfirmRestoreTemplate({
+  history,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+}: {
+  history: WorkflowHistory;
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+}): boolean {
+  return canRestoreTemplate({
+    history,
+    lifecycleMismatch,
+    refreshBlocked,
+    pendingAction,
+  });
+}
+
 export function canDeleteDraftOnlyTemplate({
   history,
   lifecycleMismatch,
@@ -221,6 +312,35 @@ export function canDeleteDraftOnlyTemplate({
     pendingAction === null &&
     history.versions.length > 0 &&
     history.versions.every((version) => version.status === "DRAFT")
+  );
+}
+
+export function canConfirmDeleteDraftOnlyTemplate({
+  history,
+  expectedName,
+  enteredName,
+  lifecycleMismatch,
+  refreshBlocked,
+  pendingAction,
+}: {
+  history: WorkflowHistory;
+  expectedName: string;
+  enteredName: string;
+  lifecycleMismatch: boolean;
+  refreshBlocked: boolean;
+  pendingAction: PendingWorkflowAction;
+}): boolean {
+  return (
+    canDeleteDraftOnlyTemplate({
+      history,
+      lifecycleMismatch,
+      refreshBlocked,
+      pendingAction,
+    }) &&
+    confirmationNameMatches({
+      expectedName,
+      enteredName,
+    })
   );
 }
 

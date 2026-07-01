@@ -36,6 +36,19 @@ Phase 3C-1A — Builder Route and Read-Only Three-Panel Shell. Add an authentica
 
 ## Completed
 
+- Phase 3B-1C workflow state-safety repair completed 2026-07-01.
+
+- Stale successful validation is now cleared before each new user-triggered validation request, before the pending validate action is set. If the new validation request fails, the previous successful validation is not restored and Publish remains unavailable until a fresh valid result for the current draft exists.
+- `handleValidateDraft` now rechecks the current authoritative template/history state, lifecycle mismatch, refresh warning, pending action, active lifecycle, and editable current draft availability before calling `validateFormTemplateVersion`.
+- Failed authoritative refresh after a workflow conflict is no longer swallowed. The original mutation error remains visible, a separate refresh-needed destructive toast is shown, `refreshWarning` is set, and further workflow/metadata mutations are blocked until both authoritative queries refresh successfully.
+- Publish, create-draft, archive, restore, and draft-only delete confirmations now recheck current loaded authoritative state immediately before calling their backend operations. Stale dialogs close with safe state-changed feedback and do not claim success.
+- Added pure workflow confirmation helpers and coverage for stale publish/create-draft/archive/restore/delete confirmation rejection plus refresh-warning blocking across validation, publish, create draft, archive, restore, and delete. Direct component-state sequencing coverage was not added because no React component-test dependency is installed and the primary revalidation invalidation is component orchestration.
+- Verification: form-template Vitest passed (`34` files, `562` tests); registry Vitest passed (`1` file, `38` tests); `git diff --check` passed; `make check` passed; `npm run lint --if-present`, `npm run test --if-present`, and `npm run build --if-present` exited 0 with no configured script output. Explicit `npx prisma validate` first failed because `DATABASE_URL` was unset, then passed with Wasp's generated local dev DB URL `postgresql://postgresWaspDevUser:postgresWaspDevPass@localhost:5432/InspectionApp-349b0351ab`.
+- Docker status: existing `wasp-dev-db-InspectionApp-349b0351ab` (`postgres:18`) was running on port 5432; no database reset, volume deletion, schema change, or migration was performed.
+- Wasp startup: escalated `timeout 180 wasp start` compiled the Wasp project, set up the database, built the SDK, started Vite on port 3000, started the backend on port 3001, started pg-boss, served template/detail/history/validation operation requests with 200 responses, and stayed healthy until timeout exit `124`. Wasp still reports the existing schema-change warning suggesting `wasp db migrate-dev`; this repair made no schema or migration changes.
+- Browser visual/console verification was not performed because tool discovery exposed GitHub and Vercel deployment-fetch tools only, not a browser automation or console connector. Manual browser scenarios remain unverified in this pass.
+- Restricted scope preserved: no backend operation, schema, migration, Wasp spec, registry, client/property/inspection/project, package, lockfile, spike, environment-file, or builder-functionality changes were made.
+
 - Phase 3B-1C template lifecycle and version workflow actions UI completed 2026-07-01.
 
 - Added the template detail workflow section using only existing generated client operations: `validateFormTemplateVersion`, `publishFormTemplateVersion`, `createDraftFromVersion`, `archiveFormTemplate`, `restoreFormTemplate`, `deleteDraftOnlyFormTemplate`, `getFormTemplateById`, and `getFormTemplateVersionHistory`.

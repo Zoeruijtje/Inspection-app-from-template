@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   canArchiveTemplate,
+  canConfirmArchiveTemplate,
+  canConfirmCreateDraftFromVersion,
+  canConfirmDeleteDraftOnlyTemplate,
+  canConfirmPublishDraft,
+  canConfirmRestoreTemplate,
   canCreateDraftFromVersion,
   canDeleteDraftOnlyTemplate,
   canPublishDraft,
@@ -137,6 +142,28 @@ describe("template workflow publish availability", () => {
           history: activeWithDraft(),
           validationResult: validResult("draft"),
           pendingAction: { type: "validate", versionId: "draft" },
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects lifecycle mismatches and refresh blocks", () => {
+    expect(
+      canPublishDraft(
+        baseAvailability({
+          history: activeWithDraft(),
+          validationResult: validResult("draft"),
+          lifecycleMismatch: true,
+        }),
+      ),
+    ).toBe(false);
+
+    expect(
+      canPublishDraft(
+        baseAvailability({
+          history: activeWithDraft(),
+          validationResult: validResult("draft"),
+          refreshBlocked: true,
         }),
       ),
     ).toBe(false);
@@ -452,6 +479,169 @@ describe("template workflow validation freshness", () => {
   });
 });
 
+describe("template workflow confirmation-time availability", () => {
+  it("rejects stale publish confirmation state", () => {
+    expect(
+      canConfirmPublishDraft(
+        baseAvailability({
+          history: activeWithDraft(),
+          validationResult: validResult("draft"),
+        }),
+      ),
+    ).toBe(true);
+
+    expect(
+      canConfirmPublishDraft(
+        baseAvailability({
+          history: activeWithDraft(),
+          validationResult: validResult("old-draft"),
+        }),
+      ),
+    ).toBe(false);
+
+    expect(
+      canConfirmPublishDraft(
+        baseAvailability({
+          history: activeWithDraft({ isReadOnly: true }),
+          validationResult: validResult("draft"),
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects stale create-draft confirmation state", () => {
+    const history = activeWithoutDraft();
+
+    expect(
+      canConfirmCreateDraftFromVersion(
+        baseVersionAvailability({
+          history,
+          version: history.versions[0],
+        }),
+      ),
+    ).toBe(true);
+
+    expect(
+      canConfirmCreateDraftFromVersion(
+        baseVersionAvailability({
+          history: { ...history, draftVersionId: "draft" },
+          version: history.versions[0],
+        }),
+      ),
+    ).toBe(false);
+
+    expect(
+      canConfirmCreateDraftFromVersion(
+        baseVersionAvailability({
+          history,
+          version: {
+            ...history.versions[0],
+            canCreateDraftFromThisVersion: false,
+          },
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("rejects archive and restore after lifecycle changes", () => {
+    expect(
+      canConfirmArchiveTemplate(baseAvailability({ history: activeWithDraft() })),
+    ).toBe(true);
+    expect(
+      canConfirmArchiveTemplate(
+        baseAvailability({ history: archivedWithDraft() }),
+      ),
+    ).toBe(false);
+
+    expect(
+      canConfirmRestoreTemplate(
+        baseAvailability({ history: archivedWithDraft() }),
+      ),
+    ).toBe(true);
+    expect(
+      canConfirmRestoreTemplate(baseAvailability({ history: activeWithDraft() })),
+    ).toBe(false);
+  });
+
+  it("rejects delete after published history appears or name changes", () => {
+    expect(
+      canConfirmDeleteDraftOnlyTemplate({
+        ...baseAvailability({ history: activeWithDraft() }),
+        expectedName: "Checklist",
+        enteredName: "Checklist",
+      }),
+    ).toBe(true);
+
+    expect(
+      canConfirmDeleteDraftOnlyTemplate({
+        ...baseAvailability({
+          history: {
+            ...activeWithDraft(),
+            versions: [draftVersion(), publishedVersion()],
+          },
+        }),
+        expectedName: "Checklist",
+        enteredName: "Checklist",
+      }),
+    ).toBe(false);
+
+    expect(
+      canConfirmDeleteDraftOnlyTemplate({
+        ...baseAvailability({ history: activeWithDraft() }),
+        expectedName: "Checklist updated",
+        enteredName: "Checklist",
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("template workflow refresh blocking", () => {
+  it("disables every workflow action", () => {
+    const draftHistory = activeWithDraft();
+    const publishedHistory = activeWithoutDraft();
+    const archivedHistory = archivedWithDraft();
+
+    expect(
+      canValidateDraft(
+        baseAvailability({ history: draftHistory, refreshBlocked: true }),
+      ),
+    ).toBe(false);
+    expect(
+      canPublishDraft(
+        baseAvailability({
+          history: draftHistory,
+          validationResult: validResult("draft"),
+          refreshBlocked: true,
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      canCreateDraftFromVersion(
+        baseVersionAvailability({
+          history: publishedHistory,
+          version: publishedHistory.versions[0],
+          refreshBlocked: true,
+        }),
+      ),
+    ).toBe(false);
+    expect(
+      canArchiveTemplate(
+        baseAvailability({ history: draftHistory, refreshBlocked: true }),
+      ),
+    ).toBe(false);
+    expect(
+      canRestoreTemplate(
+        baseAvailability({ history: archivedHistory, refreshBlocked: true }),
+      ),
+    ).toBe(false);
+    expect(
+      canDeleteDraftOnlyTemplate(
+        baseAvailability({ history: draftHistory, refreshBlocked: true }),
+      ),
+    ).toBe(false);
+  });
+});
+
 function baseAvailability({
   history,
   validationResult = null,
@@ -477,16 +667,22 @@ function baseAvailability({
 function baseVersionAvailability({
   history,
   version,
+  lifecycleMismatch = false,
+  refreshBlocked = false,
+  pendingAction = null,
 }: {
   history: WorkflowHistory;
   version: WorkflowHistoryVersion;
+  lifecycleMismatch?: boolean;
+  refreshBlocked?: boolean;
+  pendingAction?: Parameters<typeof canValidateDraft>[0]["pendingAction"];
 }) {
   return {
     history,
     version,
-    lifecycleMismatch: false,
-    refreshBlocked: false,
-    pendingAction: null,
+    lifecycleMismatch,
+    refreshBlocked,
+    pendingAction,
   };
 }
 

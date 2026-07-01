@@ -56,9 +56,15 @@ import {
   type WorkflowDialogState,
 } from "./TemplateWorkflowDialogs";
 import {
+  canConfirmArchiveTemplate,
+  canConfirmCreateDraftFromVersion,
+  canConfirmDeleteDraftOnlyTemplate,
+  canConfirmPublishDraft,
+  canConfirmRestoreTemplate,
   canCreateDraftFromVersion,
   canDeleteDraftOnlyTemplate,
   canPublishDraft,
+  canValidateDraft,
   extractWorkflowValidationDetails,
   findCurrentEditableDraft,
   getFreshValidationResult,
@@ -102,6 +108,13 @@ type FormTemplateVersionHistoryItem = {
   isReadOnly: boolean;
   canCreateDraftFromThisVersion: boolean;
 };
+
+const staleDraftMessage =
+  "The draft state changed. Refresh the page and validate the current draft again.";
+const staleTemplateMessage =
+  "The template state changed. Refresh the page before trying again.";
+const failedConflictRefreshMessage =
+  "The action failed and the current template state could not be refreshed. Reload the page.";
 
 export function TemplateDetailPage() {
   const { templateId } = useParams<{ templateId?: string }>();
@@ -166,12 +179,14 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
     try {
       await retryBothQueries();
     } catch (error) {
+      const message = getSafeErrorMessage(
+        error,
+        "Unable to reload template details.",
+      );
+      setRefreshWarning(message);
       toast({
         title: "Retry failed",
-        description: getSafeErrorMessage(
-          error,
-          "Unable to reload template details.",
-        ),
+        description: message,
         variant: "destructive",
       });
     }
@@ -282,13 +297,59 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
   const refreshAfterWorkflowFailure = async () => {
     try {
       await retryBothQueries();
-    } catch {
-      // The mutation failure is the useful user-facing error.
+    } catch (error) {
+      const safeMessage = getSafeErrorMessage(
+        error,
+        failedConflictRefreshMessage,
+      );
+      const message =
+        safeMessage === "The template page could not refresh."
+          ? failedConflictRefreshMessage
+          : safeMessage;
+
+      setRefreshWarning(message);
+      toast({
+        title: "Refresh needed",
+        description: message,
+        variant: "destructive",
+      });
     }
   };
 
+  const closeStaleWorkflowDialog = ({
+    message,
+    clearValidation,
+  }: {
+    message: string;
+    clearValidation: boolean;
+  }) => {
+    if (clearValidation) {
+      setValidationResult(null);
+    }
+
+    closeWorkflowDialog();
+    toast({
+      title: "Template state changed",
+      description: message,
+      variant: "destructive",
+    });
+  };
+
   const handleValidateDraft = async () => {
-    if (!history || pendingAction !== null || refreshWarning) {
+    if (!template || !history) {
+      return;
+    }
+
+    const refreshBlocked = refreshWarning !== null;
+    if (
+      template.lifecycleStatus !== "ACTIVE" ||
+      !canValidateDraft({
+        history,
+        lifecycleMismatch,
+        refreshBlocked,
+        pendingAction,
+      })
+    ) {
       return;
     }
 
@@ -297,8 +358,9 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
       return;
     }
 
-    setPendingAction({ type: "validate", versionId: draft.id });
+    setValidationResult(null);
     setDialogError(null);
+    setPendingAction({ type: "validate", versionId: draft.id });
 
     try {
       const result = (await validateFormTemplateVersion({
@@ -336,7 +398,21 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
   };
 
   const handleOpenPublishDialog = () => {
-    if (!history) {
+    if (!template || !history) {
+      return;
+    }
+
+    const refreshBlocked = refreshWarning !== null;
+    if (
+      template.lifecycleStatus !== "ACTIVE" ||
+      !canPublishDraft({
+        history,
+        validationResult,
+        lifecycleMismatch,
+        refreshBlocked,
+        pendingAction,
+      })
+    ) {
       return;
     }
 
@@ -355,6 +431,23 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
   const handleOpenCreateDraftDialog = (
     sourceVersion: FormTemplateVersionHistoryItem,
   ) => {
+    if (!template || !history) {
+      return;
+    }
+
+    if (
+      template.lifecycleStatus !== "ACTIVE" ||
+      !canCreateDraftFromVersion({
+        history,
+        version: sourceVersion,
+        lifecycleMismatch,
+        refreshBlocked: refreshWarning !== null,
+        pendingAction,
+      })
+    ) {
+      return;
+    }
+
     setDialogError(null);
     setDialogState({
       type: "createDraft",
@@ -369,8 +462,25 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
       return;
     }
 
+    const refreshBlocked = refreshWarning !== null;
     const draft = findCurrentEditableDraft(history);
-    if (!draft || pendingAction !== null) {
+    if (
+      !draft ||
+      template.lifecycleStatus !== "ACTIVE" ||
+      history.lifecycleStatus !== "ACTIVE" ||
+      draft.id !== history.draftVersionId ||
+      !canConfirmPublishDraft({
+        history,
+        validationResult,
+        lifecycleMismatch,
+        refreshBlocked,
+        pendingAction,
+      })
+    ) {
+      closeStaleWorkflowDialog({
+        message: staleDraftMessage,
+        clearValidation: true,
+      });
       return;
     }
 
@@ -422,7 +532,29 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
   };
 
   const handleConfirmCreateDraft = async () => {
-    if (!template || dialogState?.type !== "createDraft" || pendingAction) {
+    if (!template || !history || dialogState?.type !== "createDraft") {
+      return;
+    }
+
+    const sourceVersion = history.versions.find(
+      (version) => version.id === dialogState.sourceVersionId,
+    );
+
+    if (
+      !sourceVersion ||
+      template.lifecycleStatus !== "ACTIVE" ||
+      !canConfirmCreateDraftFromVersion({
+        history,
+        version: sourceVersion,
+        lifecycleMismatch,
+        refreshBlocked: refreshWarning !== null,
+        pendingAction,
+      })
+    ) {
+      closeStaleWorkflowDialog({
+        message: staleTemplateMessage,
+        clearValidation: false,
+      });
       return;
     }
 
@@ -463,7 +595,23 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
   };
 
   const handleConfirmArchive = async () => {
-    if (!template || dialogState?.type !== "archive" || pendingAction) {
+    if (!template || !history || dialogState?.type !== "archive") {
+      return;
+    }
+
+    if (
+      template.lifecycleStatus !== "ACTIVE" ||
+      !canConfirmArchiveTemplate({
+        history,
+        lifecycleMismatch,
+        refreshBlocked: refreshWarning !== null,
+        pendingAction,
+      })
+    ) {
+      closeStaleWorkflowDialog({
+        message: staleTemplateMessage,
+        clearValidation: false,
+      });
       return;
     }
 
@@ -496,7 +644,23 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
   };
 
   const handleConfirmRestore = async () => {
-    if (!template || dialogState?.type !== "restore" || pendingAction) {
+    if (!template || !history || dialogState?.type !== "restore") {
+      return;
+    }
+
+    if (
+      template.lifecycleStatus !== "ARCHIVED" ||
+      !canConfirmRestoreTemplate({
+        history,
+        lifecycleMismatch,
+        refreshBlocked: refreshWarning !== null,
+        pendingAction,
+      })
+    ) {
+      closeStaleWorkflowDialog({
+        message: staleTemplateMessage,
+        clearValidation: false,
+      });
       return;
     }
 
@@ -529,7 +693,24 @@ function TemplateDetailData({ templateId }: { templateId: string }) {
   };
 
   const handleConfirmDelete = async () => {
-    if (!template || dialogState?.type !== "delete" || pendingAction) {
+    if (!template || !history || dialogState?.type !== "delete") {
+      return;
+    }
+
+    if (
+      !canConfirmDeleteDraftOnlyTemplate({
+        history,
+        expectedName: template.name,
+        enteredName: deleteConfirmationName,
+        lifecycleMismatch,
+        refreshBlocked: refreshWarning !== null,
+        pendingAction,
+      })
+    ) {
+      closeStaleWorkflowDialog({
+        message: staleTemplateMessage,
+        clearValidation: false,
+      });
       return;
     }
 
